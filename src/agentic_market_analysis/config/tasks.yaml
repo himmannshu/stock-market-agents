@@ -1,10 +1,10 @@
 research_task:
   description: >
-    Conduct a thorough research about {topic}
+    Conduct a thorough research about Stock Market
     Make sure you find any interesting and relevant information given
-    the current year is {current_year}.
+    the current year is 2025.
   expected_output: >
-    A list with 10 bullet points of the most relevant information about {topic}
+    A list with 10 bullet points of the most relevant information about Stock Market
   agent: researcher
 
 reporting_task:
