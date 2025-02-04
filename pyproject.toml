@@ -1,0 +1,23 @@
+[project]
+name = "agentic_market_analysis"
+version = "0.1.0"
+description = "agentic-market-analysis using crewAI"
+authors = [{ name = "Your Name", email = "you@example.com" }]
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "crewai[tools]>=0.100.1,<1.0.0"
+]
+
+[project.scripts]
+agentic_market_analysis = "agentic_market_analysis.main:run"
+run_crew = "agentic_market_analysis.main:run"
+train = "agentic_market_analysis.main:train"
+replay = "agentic_market_analysis.main:replay"
+test = "agentic_market_analysis.main:test"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.crewai]
+type = "crew"
