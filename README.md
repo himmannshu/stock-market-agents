@@ -14,8 +14,8 @@ A comprehensive stock sentiment analysis platform that aggregates and analyzes m
 ## Prerequisites
 
 - Python >=3.10 <3.13
-- An OpenAI API key (for certain features)
 - SEC API token (for SEC filings analysis)
+- Ollama model: deepseek-r1:7b
 
 ## Installation
 
@@ -38,7 +38,6 @@ pip install -r requirements.txt
 
 4. Create a `.env` file in the root directory with your API keys:
 ```
-OPENAI_API_KEY=your_openai_api_key
 SEC_API_TOKEN=your_sec_api_token
 ```
 
