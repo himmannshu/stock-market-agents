@@ -4,6 +4,7 @@ import pandas as pd
 import os
 import yfinance as yf
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
+from sec_api import QueryApi
 
 from dotenv import load_dotenv
 
@@ -51,59 +52,67 @@ def yahoo_finance_agent(target: str) -> pd.DataFrame:
     
     return pd.DataFrame(results)
 
+
 def sec_filings_agent(target: str) -> pd.DataFrame:
     """
-    Fetch SEC filings using sec-api.io for a given target symbol.
-    Requires SEC_API_TOKEN to be set as an environment variable.
-    Extracts a simulated text summary from each filing and computes sentiment using FinBERT.
+    Fetch SEC filings for a given target symbol using sec-api.io.
+    This function uses a POST request with a query JSON similar to:
+    
+      {
+          "query": "cik:(<CIK>)",
+          "from": "0",
+          "size": "20",
+          "sort": [{ "filedAt": { "order": "desc" } }]
+      }
+    
+    The SEC API token must be set as an environment variable 'SEC_API_TOKEN'.
+    The returned filings are summarized and then sentiment is computed using FinBERT.
     """
     sec_api_token = os.environ.get("SEC_API_TOKEN")
+    query_fillings = QueryApi(api_key=sec_api_token)
     if not sec_api_token:
         print("SEC_API_TOKEN not set in environment.")
         return pd.DataFrame()
     
-    # Mapping from stock symbol to CIK (extend as needed)
-    cik_mapping = {
-        "AAPL": "0000320193",
-        "MSFT": "0000789019",
-        # Add other mappings as required
+    # Build the query JSON based on the sample provided:
+    query_json = {
+        "query": f"ticker:({target.upper()})",
+        "from": "0",
+        "size": "5",
+        "sort": [{ "filedAt": { "order": "desc" } }]
     }
-    cik = cik_mapping.get(target.upper())
-    if not cik:
-        print(f"No CIK mapping found for symbol {target}")
-        return pd.DataFrame()
     
-    # Construct the API URL for sec-api.io; adjust parameters per sec-api.io docs.
-    # Here, we request the 5 most recent filings for the given CIK.
-    url = f"https://api.sec-api.io/v1/filings?token={sec_api_token}&CIK={cik}&limit=5"
     
     try:
-        r = requests.get(url)
-        r.raise_for_status()
-        data = r.json()
+        response = query_fillings.get_filings(query_json)
     except Exception as e:
         print(f"Error fetching SEC filings from sec-api.io for {target}: {e}")
         return pd.DataFrame()
     
     results = []
-    # Assume the API returns a JSON object with a "filings" key containing a list of filings.
-    filings = data.get("filings", [])
+    filings = response.get("filings", [])
+    
     for filing in filings:
-        # Assume each filing has at least 'form' and 'filingDate' keys.
-        form_type = filing.get("form", "N/A")
-        filing_date = filing.get("filingDate", "N/A")
-        # For demonstration, create a simple text summary.
-        text = f"SEC Filing {form_type} on {filing_date}."
-        text = clean_text(text)
-        sentiment = finbert_pipeline(text)[0] if text else {"label": "NEUTRAL", "score": 0.0}
+        print(filing.get("description"))
+        # Extract relevant fields
+        company_long = filing.get("companyNameLong", filing.get("companyName", "Unknown Company"))
+        form_type = filing.get("formType", "N/A")
+        filed_at = filing.get("filedAt", "N/A")
+        description = filing.get("description", "")
+        
+        # Build a summary string for FinBERT analysis
+        summary = f"{company_long} filed a {form_type} on {filed_at}. {description}"
+        summary = clean_text(summary)
+        
+        sentiment = finbert_pipeline(summary)[0] if summary else {"label": "NEUTRAL", "score": 0.0}
+        
         results.append({
             "source": "SEC Filings",
-            "text": text,
+            "text": summary,
             "sentiment": sentiment
         })
     
     return pd.DataFrame(results)
-
 # For testing purposes
 if __name__ == "__main__":
     symbol = "AAPL"
