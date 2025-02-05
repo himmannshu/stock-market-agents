@@ -21,7 +21,7 @@ A comprehensive stock sentiment analysis platform that aggregates and analyzes m
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone [<repository-url>](https://github.com/himmannshu/stock-market-agents.git)
 cd stock-sentiment-analysis
 ```
 
@@ -68,7 +68,3 @@ streamlit run src/agentic_market_analysis/app.py
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
