@@ -3,38 +3,34 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_ollama import OllamaLLM
 
-# Define a prompt template that instructs the LLM to extract intent and target
 prompt_template = (
-    "Extract the intent and target from the following query: '{query}'.\n"
-    "Return your answer as a JSON object with keys 'intent' and 'target'."
+    "Given the following query: {query}, extract the intent, the target company name and its corresponding stock ticker symbol. "
+    "Return a valid JSON object with exactly three keys: 'intent', 'target_company' and 'ticker'. "
+    "For example, if the query is 'What is the sentiment towards Apple stock?', the output should be: "
+    '{{"intent": "sentiment", "target_company": "Apple Inc.", "ticker": "AAPL"}}. '
+    "If you are not sure about the ticker symbol, return an empty string for 'ticker'. "
+    "Do not include any extra text or markdown."
 )
 template = PromptTemplate(input_variables=["query"], template=prompt_template)
 
-llm = OllamaLLM(model = "deepseek-r1:7b")
-
-# Create an LLMChain using the prompt template and the LLM
+llm = OllamaLLM(model="deepseek-r1:7b")
 chain = template | llm | StrOutputParser()
 
 def parse_user_query(query: str) -> dict:
-    # Run the chain to get the response from the LLM
-    response = chain.invoke(query)
-
-    # Clean the response: attempt to strip any non-JSON prefix
+    response = chain.invoke({"query": query})
     start = response.find('{')
     end = response.rfind('}')
     if start != -1 and end != -1 and end > start:
         json_str = response[start:end+1]
     else:
-        # If no opening brace is found, log the raw response
-        print("No JSON object found in response. Raw response:")
-        json_str = response
+        print("No JSON object found in response. Raw response:", response)
+        return {"intent": "sentiment", "target_company": query.split()[-1], "ticker": ""}
+    
     try:
-        parsed = json.loads(json_str)
-        return parsed
-    except Exception as e:
+        return json.loads(json_str)
+    except json.JSONDecodeError as e:
         print("Error parsing response:", e)
-        # Fallback heuristic: assume the last word is the target and the intent is 'sentiment'
-        return {"intent": "sentiment", "target": query.split()[-1]}
+        return {"intent": "sentiment", "target_company": query.split()[-1], "ticker": ""}
 
 if __name__ == "__main__":
     sample_query = "What is the sentiment towards Apple stock?"

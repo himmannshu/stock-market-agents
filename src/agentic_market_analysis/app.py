@@ -5,6 +5,12 @@ import plotly.express as px
 from chat_inference import parse_user_query
 from orchestration import orchestrate_data_collection
 
+
+import torch
+if hasattr(torch, '__path__'):
+    torch.__path__ = []
+
+
 # Set the page configuration
 st.set_page_config(page_title="Stock Sentiment Analysis Interface", layout="wide")
 
@@ -29,11 +35,13 @@ elif nav_option == "Sentiment Analysis":
         st.subheader("Parsed Query")
         st.json(parsed_result)
         
-        target = parsed_result.get("target", "")
-        if target:
-            st.write(f"Aggregating data for target: **{target}**")
+        target_company = parsed_result.get("target_company", "")
+        company_ticker = parsed_result.get("ticker", "")        
+        if target_company:
+            st.write(f"Aggregating data for target: **{target_company}**")
             with st.spinner("Collecting data from Yahoo Finance and SEC Filings..."):
-                combined_df = orchestrate_data_collection(target)
+                combined_df = orchestrate_data_collection(company_ticker)
+                print(combined_df.head())
             if combined_df.empty:
                 st.error("No data found for the specified target.")
             else:

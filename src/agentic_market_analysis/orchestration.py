@@ -6,6 +6,7 @@ def orchestrate_data_collection(target: str) -> pd.DataFrame:
     Aggregates data from the Yahoo Finance agent and the SEC Filings agent for the given target symbol.
     Returns a combined DataFrame with the columns: 'source', 'text', and 'sentiment'.
     """
+
     # Call the Yahoo Finance agent
     yahoo_df = yahoo_finance_agent(target)
     
