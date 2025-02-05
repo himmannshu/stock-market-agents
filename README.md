@@ -1,54 +1,75 @@
-# AgenticMarketAnalysis Crew
+# Stock Sentiment Analysis Platform
 
-Welcome to the AgenticMarketAnalysis Crew project, powered by [crewAI](https://crewai.com). This template is designed to help you set up a multi-agent AI system with ease, leveraging the powerful and flexible framework provided by crewAI. Our goal is to enable your agents to collaborate effectively on complex tasks, maximizing their collective intelligence and capabilities.
+A comprehensive stock sentiment analysis platform that aggregates and analyzes market sentiment from multiple sources including Yahoo Finance news and SEC filings. The platform uses natural language processing and machine learning to provide insights into market sentiment for specific stocks.
+
+## Features
+
+- Real-time stock data analysis using Yahoo Finance
+- SEC filings sentiment analysis
+- News sentiment analysis using FinBERT
+- Interactive web interface built with Streamlit
+- Multi-source data aggregation
+- Sentiment visualization and analytics
+
+## Prerequisites
+
+- Python >=3.10 <3.13
+- An OpenAI API key (for certain features)
+- SEC API token (for SEC filings analysis)
 
 ## Installation
 
-Ensure you have Python >=3.10 <3.13 installed on your system. This project uses [UV](https://docs.astral.sh/uv/) for dependency management and package handling, offering a seamless setup and execution experience.
-
-First, if you haven't already, install uv:
-
+1. Clone the repository:
 ```bash
-pip install uv
+git clone <repository-url>
+cd stock-sentiment-analysis
 ```
 
-Next, navigate to your project directory and install the dependencies:
-
-(Optional) Lock the dependencies and install them by using the CLI command:
+2. Create and activate a virtual environment:
 ```bash
-crewai install
-```
-### Customizing
-
-**Add your `OPENAI_API_KEY` into the `.env` file**
-
-- Modify `src/agentic_market_analysis/config/agents.yaml` to define your agents
-- Modify `src/agentic_market_analysis/config/tasks.yaml` to define your tasks
-- Modify `src/agentic_market_analysis/crew.py` to add your own logic, tools and specific args
-- Modify `src/agentic_market_analysis/main.py` to add custom inputs for your agents and tasks
-
-## Running the Project
-
-To kickstart your crew of AI agents and begin task execution, run this from the root folder of your project:
-
-```bash
-$ crewai run
+python -m venv venv
+source venv/bin/activate  # On Windows, use: venv\Scripts\activate
 ```
 
-This command initializes the agentic-market-analysis Crew, assembling the agents and assigning them tasks as defined in your configuration.
+3. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
 
-This example, unmodified, will run the create a `report.md` file with the output of a research on LLMs in the root folder.
+4. Create a `.env` file in the root directory with your API keys:
+```
+OPENAI_API_KEY=your_openai_api_key
+SEC_API_TOKEN=your_sec_api_token
+```
 
-## Understanding Your Crew
+## Running the Application
 
-The agentic-market-analysis Crew is composed of multiple AI agents, each with unique roles, goals, and tools. These agents collaborate on a series of tasks, defined in `config/tasks.yaml`, leveraging their collective skills to achieve complex objectives. The `config/agents.yaml` file outlines the capabilities and configurations of each agent in your crew.
+1. Start the Streamlit application:
+```bash
+streamlit run src/agentic_market_analysis/app.py
+```
 
-## Support
+2. Open your browser and navigate to `http://localhost:8501`
 
-For support, questions, or feedback regarding the AgenticMarketAnalysis Crew or crewAI.
-- Visit our [documentation](https://docs.crewai.com)
-- Reach out to us through our [GitHub repository](https://github.com/joaomdmoura/crewai)
-- [Join our Discord](https://discord.com/invite/X4JWnZnxPb)
-- [Chat with our docs](https://chatg.pt/DWjSBZn)
+## Usage
 
-Let's create wonders together with the power and simplicity of crewAI.
+1. Navigate to the "Sentiment Analysis" tab
+2. Enter a query like "What is the sentiment towards Apple stock?"
+3. Click "Analyze Query" to see the results
+4. View sentiment distribution and detailed analysis in the interface
+
+## Project Structure
+
+- `src/agentic_market_analysis/`
+  - `agents.py`: Contains the Yahoo Finance and SEC filing analysis agents
+  - `app.py`: Streamlit web interface
+  - `chat_inference.py`: Query parsing and intent extraction
+  - `orchestration.py`: Data collection and aggregation logic
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
