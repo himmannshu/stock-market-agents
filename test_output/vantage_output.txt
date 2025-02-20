@@ -1,0 +1,228 @@
+DEBUG Endpoint: heading_tag = <h4 id="intraday">TIME_SERIES_INTRADAY <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="daily">TIME_SERIES_DAILY</h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="dailyadj">TIME_SERIES_DAILY_ADJUSTED <span class="popular-label">Trending</span> <span class="premium-label">Premium</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="weekly">TIME_SERIES_WEEKLY</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="weeklyadj">TIME_SERIES_WEEKLY_ADJUSTED</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="monthly">TIME_SERIES_MONTHLY</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="monthlyadj">TIME_SERIES_MONTHLY_ADJUSTED</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="latestprice">Quote Endpoint <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="realtime-bulk-quotes">Realtime Bulk Quotes <span class="premium-label">Premium</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="symbolsearch">Search Endpoint <span class="utility-label">Utility</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="market-status">Global Market Open &amp; Close Status <span class="utility-label">Utility</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="realtime-options">Realtime Options <span class="popular-label">Trending</span> <span class="premium-label">Premium</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="historical-options">Historical Options <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="news-sentiment">Market News &amp; Sentiment <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="gainer-loser">Top Gainers, Losers, and Most Actively Traded Tickers (US Market)</h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="insider-transactions">Insider Transactions <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="analytics-fixed-window">Advanced Analytics (Fixed Window)</h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="analytics-sliding-window">Advanced Analytics (Sliding Window) <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="company-overview">Company Overview</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="etf-profile">ETF Profile &amp; Holdings</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="dividends">Corporate Action - Dividends</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="splits">Corporate Action - Splits</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="income-statement">INCOME_STATEMENT <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Example - annual &amp; quarterly income statements for IBM (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="balance-sheet">BALANCE_SHEET <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Example - annual &amp; quarterly balance sheets for IBM (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="cash-flow">CASH_FLOW <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Example - annual &amp; quarterly cash flows for IBM (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="earnings">Earnings</h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="listing-status">Listing &amp; Delisting Status</h4>
+DEBUG: current_element=<h6><b>Examples</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="earnings-calendar">Earnings Calendar</h4>
+DEBUG: current_element=<h6><b>Examples</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="ipo-calendar">IPO Calendar</h4>
+DEBUG: current_element=<h6><b>Examples</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="currency-exchange">CURRENCY_EXCHANGE_RATE <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="fx-intraday">FX_INTRADAY <span class="premium-label">Premium</span> <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="fx-daily">FX_DAILY </h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="fx-weekly">FX_WEEKLY</h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="fx-monthly">FX_MONTHLY</h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="crypto-exchange">CURRENCY_EXCHANGE_RATE <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="crypto-intraday">CRYPTO_INTRADAY <span class="popular-label">Trending</span> <span class="premium-label">Premium</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="currency-daily">DIGITAL_CURRENCY_DAILY </h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="currency-weekly">DIGITAL_CURRENCY_WEEKLY <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="currency-monthly">DIGITAL_CURRENCY_MONTHLY <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="wti">Crude Oil Prices: West Texas Intermediate (WTI) <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="brent">Crude Oil Prices (Brent) <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="natural-gas">Natural Gas</h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="copper">Global Price of Copper <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="aluminum">Global Price of Aluminum </h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="wheat">Global Price of Wheat </h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="corn">Global Price of Corn </h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="cotton">Global Price of Cotton </h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="sugar">Global Price of Sugar </h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="coffee">Global Price of Coffee </h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="all-commodities">Global Price Index of All Commodities</h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="real-gdp">REAL_GDP <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="real-gdp-per-capita">REAL_GDP_PER_CAPITA</h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="treasury-yield">TREASURY_YIELD <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="interest-rate">FEDERAL_FUNDS_RATE</h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="cpi">CPI</h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="inflation">INFLATION</h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="retail-sales">RETAIL_SALES</h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="durable-goods">DURABLES</h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="unemployment">UNEMPLOYMENT</h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="nonfarm-payroll">NONFARM_PAYROLL</h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="sma">SMA <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="ema">EMA <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="wma">WMA</h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="dema">DEMA</h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="tema">TEMA</h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="trima">TRIMA</h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="kama">KAMA</h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="mama">MAMA</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="vwap">VWAP <span class="popular-label">Trending</span> <span class="premium-label">Premium</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="t3">T3</h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="macd">MACD <span class="popular-label">Trending</span> <span class="premium-label">Premium</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="macdext">MACDEXT</h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="stoch">STOCH <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="stochf">STOCHF</h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="rsi">RSI <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="stochrsi">STOCHRSI</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="willr">WILLR</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="adx">ADX <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="adxr">ADXR</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="apo">APO</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="ppo">PPO</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="mom">MOM</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="bop">BOP</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="cci">CCI <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="cmo">CMO</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="roc">ROC</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="rocr">ROCR</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="aroon">AROON <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="aroonosc">AROONOSC</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="mfi">MFI</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="trix">TRIX</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="ultosc">ULTOSC</h4>
+DEBUG: current_element=<h6><b>Examples (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="dx">DX</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="minusdi">MINUS_DI</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="plusdi">PLUS_DI</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="minusdm">MINUS_DM</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="plusdm">PLUS_DM</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="bbands">BBANDS <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="midpoint">MIDPOINT</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="midprice">MIDPRICE</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="sar">SAR</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="trange">TRANGE</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="atr">ATR</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="natr">NATR</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="ad">AD <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="adosc">ADOSC</h4>
+DEBUG: current_element=<h6><b>Example(click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="obv">OBV <span class="popular-label">Trending</span></h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="httrendline">HT_TRENDLINE</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="htsine">HT_SINE</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="httrendmode">HT_TRENDMODE</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="htdcperiod">HT_DCPERIOD</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="htdcphase">HT_DCPHASE</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+DEBUG Endpoint: heading_tag = <h4 id="htphasor">HT_PHASOR</h4>
+DEBUG: current_element=<h6><b>Example (click for JSON output)</b></h6>
+API rules JSON file created: alpha_vantage_api_rules.json
+Extracted 113 endpoint rules.
