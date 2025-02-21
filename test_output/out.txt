@@ -1,0 +1,49 @@
+```json
+{
+  "url_endpoint": "TIME_SERIES_INTRADAY",
+  "required_arguments": {
+    "function": {
+      "allowed_values": ["TIME_SERIES_INTRADAY"],
+      "description": "The time series of your choice."
+    },
+    "symbol": {
+      "allowed_values": "Any valid stock symbol (e.g., IBM)",
+      "description": "The name of the equity of your choice."
+    },
+    "interval": {
+      "allowed_values": ["1min", "5min", "15min", "30min", "60min"],
+      "description": "Time interval between two consecutive data points in the time series."
+    },
+    "time_period": {
+      "allowed_values": "Positive integers (e.g., 60, 200)",
+      "description": "Number of data points used to calculate each moving average value."
+    },
+    "series_type": {
+      "allowed_values": ["close", "open", "high", "low"],
+      "description": "The desired price type in the time series."
+    },
+    "apikey": {
+      "allowed_values": "Your API key",
+      "description": "Your API key. Claim your free API key here."
+    }
+  },
+  "optional_arguments": {
+    "adjusted": {
+      "allowed_values": ["true", "false"],
+      "description": "Set to true for adjusted data, or false for raw data."
+    },
+    "extended_hours": {
+      "allowed_values": ["true", "false"],
+      "description": "Set to true to include extended hours trading data, or false for regular hours only."
+    },
+    "month": {
+      "allowed_values": "Any valid month value",
+      "description": "An optional parameter for specifying the month."
+    },
+    "datatype": {
+      "allowed_values": ["json", "csv"],
+      "description": "Set to json for a JSON response, or csv for a CSV file."
+    }
+  }
+}
+```
