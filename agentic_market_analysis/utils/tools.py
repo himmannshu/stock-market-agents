@@ -18,6 +18,7 @@ vector_store = Chroma(
 
 @tool
 def retrieve_alpha_vantage_api_endpoint(query: str):
+    """Use this to gather context about the alpha vantage api endpoint info, required arguments, optional arguments and allowed values for them."""
     retrieved_docs = vector_store.similarity_search(query)
     return {"context": retrieved_docs, "question": query}
 

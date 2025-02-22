@@ -1,1 +1,1 @@
-from .tools import call_alpha_vantage_api
+from .tools import call_alpha_vantage_api, retrieve_alpha_vantage_api_endpoint
