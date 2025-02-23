@@ -1,6 +1,6 @@
-langchain
-langchain_openai
-langchain_community
-langchain_experimental
-langggraph
-beautifulsoup4
+tenacity
+termcolor
+scipy
+tiktoken
+openai
+tavily-python
