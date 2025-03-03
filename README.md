@@ -1,70 +1,120 @@
-# Stock Sentiment Analysis Platform
+# Stock Market Agents
 
-A comprehensive stock sentiment analysis platform that aggregates and analyzes market sentiment from multiple sources including Yahoo Finance news and SEC filings. The platform uses natural language processing and machine learning to provide insights into market sentiment for specific stocks.
+A Python project that provides intelligent agents for interacting with stock market data using the Alpha Vantage API and LLM capabilities.
 
 ## Features
 
-- Real-time stock data analysis using Yahoo Finance
-- SEC filings sentiment analysis
-- News sentiment analysis using FinBERT
-- Interactive web interface built with Streamlit
-- Multi-source data aggregation
-- Sentiment visualization and analytics
-
-## Prerequisites
-
-- Python >=3.10 <3.13
-- SEC API token (for SEC filings analysis)
-- Ollama model: deepseek-r1:7b
+- **Alpha Vantage API Integration**: Seamless integration with Alpha Vantage's comprehensive financial data API
+- **Documentation Scraping**: Automatic scraping and parsing of Alpha Vantage API documentation
+- **Semantic Search**: Intelligent endpoint discovery using ChromaDB for semantic search
+- **LLM Integration**: Integration with OpenAI's GPT models for intelligent query processing
+- **Web Search Capabilities**: Integration with Tavily for real-time market research
 
 ## Installation
 
 1. Clone the repository:
 ```bash
-git clone [<repository-url>](https://github.com/himmannshu/stock-market-agents.git)
-cd stock-sentiment-analysis
+git clone https://github.com/himmannshu/stock-market-agents.git
+cd stock-market-agents
 ```
 
 2. Create and activate a virtual environment:
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows, use: venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate  # On Windows, use `.venv\Scripts\activate`
 ```
 
-3. Install dependencies:
+3. Install the required packages:
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Create a `.env` file in the root directory with your API keys:
-```
-SEC_API_TOKEN=your_sec_api_token
-```
-
-## Running the Application
-
-1. Start the Streamlit application:
+4. Set up your environment variables:
 ```bash
-streamlit run src/agentic_market_analysis/app.py
+# Create a .env file with your API keys
+ALPHA_VANTAGE_API_KEY=your_api_key_here
+OPENAI_API_KEY=your_openai_key_here
+TAVILY_API_KEY=your_tavily_key_here
 ```
-
-2. Open your browser and navigate to `http://localhost:8501`
 
 ## Usage
 
-1. Navigate to the "Sentiment Analysis" tab
-2. Enter a query like "What is the sentiment towards Apple stock?"
-3. Click "Analyze Query" to see the results
-4. View sentiment distribution and detailed analysis in the interface
+### Alpha Vantage Tool
+
+The `AlphaVantageTool` class provides a powerful interface for interacting with the Alpha Vantage API:
+
+```python
+from stock_market_agents.tools.alpha_vantage import AlphaVantageTool
+
+# Initialize the tool
+tool = AlphaVantageTool(api_key="your_api_key")
+
+# Scrape and embed API documentation
+endpoints = tool.scrape_documentation()
+tool.embed_documentation(endpoints)
+
+# Query for relevant endpoints
+results = tool.query("How to get stock price data?")
+
+# Make API calls
+data = tool.call_endpoint(
+    function="TIME_SERIES_DAILY",
+    symbol="GOOGL"
+)
+```
+
+### Jupyter Notebook Integration
+
+The project includes Jupyter notebook examples demonstrating:
+- Setting up the environment
+- Using the Alpha Vantage tool
+- Integrating with LLM models
+- Performing market research
 
 ## Project Structure
 
-- `src/agentic_market_analysis/`
-  - `agents.py`: Contains the Yahoo Finance and SEC filing analysis agents
-  - `app.py`: Streamlit web interface
-  - `chat_inference.py`: Query parsing and intent extraction
-  - `orchestration.py`: Data collection and aggregation logic
+```
+stock-market-agents/
+├── stock_market_agents/
+│   └── tools/
+│       └── alpha_vantage.py
+├── tests/
+│   └── test_alpha_vantage.py
+├── notebooks/
+│   └── stock_market_agent.ipynb
+├── requirements.txt
+└── README.md
+```
+
+## Development
+
+### Running Tests
+
+```bash
+python -m pytest tests/
+```
+
+### Adding New Features
+
+1. Create a new branch for your feature
+2. Implement your changes
+3. Add tests
+4. Submit a pull request
+
+## Dependencies
+
+- `requests`: For making HTTP requests
+- `beautifulsoup4`: For parsing HTML documentation
+- `chromadb`: For semantic search capabilities
+- `openai`: For LLM integration
+- `tavily-python`: For web search capabilities
+- Other dependencies listed in `requirements.txt`
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a new Pull Request
+
