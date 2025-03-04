@@ -3,10 +3,13 @@ import json
 import requests
 from bs4 import BeautifulSoup
 import chromadb
+from chromadb.config import Settings
 from typing import Dict, List, Optional, Union, Tuple, Any
 from dataclasses import dataclass
 import logging
 import re
+from ..config.database import CHROMA_SETTINGS
+from ..utils.cache import Cache
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -35,8 +38,108 @@ class AlphaVantageTool:
         self.api_key = api_key
         self.base_url = "https://www.alphavantage.co/query"
         self.docs_url = "https://www.alphavantage.co/documentation/"
-        self.client = chromadb.Client()
+        
+        # Initialize ChromaDB with persistent storage
+        self.client = chromadb.Client(Settings(
+            persist_directory=CHROMA_SETTINGS["persist_directory"],
+            anonymized_telemetry=CHROMA_SETTINGS["anonymized_telemetry"]
+        ))
         self.collection = self.client.get_or_create_collection(collection_name)
+        
+        # Initialize cache
+        self.cache = Cache("alpha_vantage")
+        
+        # Check if we need to initialize the embeddings
+        if self.collection.count() == 0:
+            logger.info("No endpoints found in database. Scraping documentation...")
+            self.scrape_documentation()
+    
+    def _get_cache_key(self, function: str, params: Dict[str, Any]) -> str:
+        """Generate a cache key for an API call
+        
+        Args:
+            function: API function name
+            params: API parameters
+            
+        Returns:
+            Cache key string
+        """
+        # Sort parameters to ensure consistent cache keys
+        sorted_params = dict(sorted(params.items()))
+        return f"{function}:{json.dumps(sorted_params)}"
+    
+    def make_api_call(self, function: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        """Make an API call to Alpha Vantage with caching
+        
+        Args:
+            function: API function to call
+            params: Parameters for the API call
+            
+        Returns:
+            API response data
+        """
+        # Add function to params for the actual API call
+        api_params = params.copy()
+        api_params["function"] = function
+        api_params["apikey"] = self.api_key
+        
+        cache_key = self._get_cache_key(function, params)
+        
+        # Try to get from cache first
+        cached_result = self.cache.get(cache_key)
+        if cached_result is not None:
+            logger.info(f"Cache hit for {function}")
+            return cached_result
+        
+        # Make API call if not in cache
+        try:
+            response = requests.get(self.base_url, params=api_params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            # Cache the result
+            # Use a longer expiry for historical data that doesn't change often
+            if any(k in function.upper() for k in ["DAILY", "WEEKLY", "MONTHLY", "EARNINGS", "OVERVIEW"]):
+                expiry = 24 * 3600  # 24 hours for historical data
+            else:
+                expiry = 300  # 5 minutes for real-time data
+            
+            self.cache.set(cache_key, data, expiry)
+            return data
+            
+        except requests.RequestException as e:
+            logger.error(f"API call failed: {str(e)}")
+            raise
+    
+    def query_endpoints(self, question: str, top_k: int = 5) -> List[APIEndpoint]:
+        """Query the embeddings database for relevant endpoints
+        
+        Args:
+            question: The question to find relevant endpoints for
+            top_k: Number of results to return
+            
+        Returns:
+            List of relevant API endpoints
+        """
+        results = self.collection.query(
+            query_texts=[question],
+            n_results=top_k
+        )
+        
+        endpoints = []
+        for idx, metadata in enumerate(results["metadatas"][0]):
+            endpoint = APIEndpoint(
+                name=metadata["name"],
+                description=metadata["description"],
+                endpoint=metadata["endpoint"],
+                function=metadata["function"],
+                required_params=json.loads(metadata["required_params"]),
+                optional_params=json.loads(metadata["optional_params"]),
+                example_response=metadata.get("example_response")
+            )
+            endpoints.append(endpoint)
+        
+        return endpoints
     
     def _get_documentation_html(self) -> str:
         """Get the documentation HTML content"""
@@ -140,8 +243,9 @@ class AlphaVantageTool:
                 current = endpoint_header
                 while current:
                     current = current.find_next_sibling()
-                    if current and current.name == "h4":
+                    if not current or current.name == "h4" or (current.name == "h6" and "Examples" in current.get_text()):
                         break
+                    
                     if current and current.name == "h6" and "API Parameters" in current.get_text():
                         param_section = current
                         break
@@ -315,13 +419,4 @@ class AlphaVantageTool:
         Returns:
             API response as a dictionary
         """
-        params["function"] = function
-        params["apikey"] = self.api_key
-        
-        try:
-            response = requests.get(self.base_url, params=params)
-            response.raise_for_status()
-            return response.json()
-        except requests.RequestException as e:
-            logger.error(f"Error calling Alpha Vantage API: {e}")
-            raise 
+        return self.make_api_call(function, params)
