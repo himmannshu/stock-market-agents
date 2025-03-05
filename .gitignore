@@ -1,4 +1,60 @@
-.env
+# Python
 __pycache__/
-.DS_Store
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.env
 .venv
+env/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.project
+.pydevproject
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+*.db
+
+# Project-specific
+stock_market_agents/data/
+logs/
+*.log
+.coverage
+htmlcov/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# ChromaDB
+chroma/
+*.sqlite3
