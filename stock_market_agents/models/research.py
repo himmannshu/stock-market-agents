@@ -50,6 +50,29 @@ class StockData:
     historical_prices: Optional[List[float]] = None
 
 @dataclass
+class NewsArticle:
+    """News article data."""
+    title: str
+    url: str
+    published_date: str
+    content: str
+    summary: str
+    sentiment: str
+
+@dataclass
+class NewsAnalysis:
+    """News analysis data."""
+    key_points: List[str]
+    sentiment: str
+    impact_analysis: str
+
+@dataclass
+class NewsData:
+    """Combined news data."""
+    articles: List[Dict[str, Any]]
+    analysis: Optional[NewsAnalysis] = None
+
+@dataclass
 class CompanyAnalysis:
     """Comprehensive analysis for a company."""
     company_name: str
@@ -67,6 +90,7 @@ class ResearchResults:
     financial_metrics: FinancialMetrics
     balance_sheet: BalanceSheet
     stock_data: StockData
+    news_data: Optional[NewsData]
     error: Optional[str] = None
 
 @dataclass

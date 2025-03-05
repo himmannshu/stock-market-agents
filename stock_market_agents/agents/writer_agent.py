@@ -112,6 +112,28 @@ line ["Price", "MA50", "MA200"]
 ```
 """
             
+                # Add news section
+                if result.news_data:
+                    report += "\n## Recent News & Analysis\n\n"
+                    
+                    # Add news articles
+                    report += "### Top News Articles\n\n"
+                    for article in result.news_data.articles:
+                        if article.get("type") == "analysis":
+                            continue
+                        
+                        report += f"**{article['title']}**\n"
+                        report += f"- Published: {article['published_date']}\n"
+                        report += f"- Summary: {article['summary']}\n"
+                        report += f"- Sentiment: {article['sentiment']}\n"
+                        report += f"- [Read more]({article['url']})\n\n"
+                    
+                    # Add analysis if available
+                    analysis = next((a for a in result.news_data.articles if a.get("type") == "analysis"), None)
+                    if analysis:
+                        report += "### News Analysis\n\n"
+                        report += f"{analysis['content']}\n\n"
+            
             # Write report to file
             with open(output_path, 'w') as f:
                 f.write(report)

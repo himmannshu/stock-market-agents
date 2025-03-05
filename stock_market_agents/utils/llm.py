@@ -2,6 +2,7 @@
 
 import logging
 import json
+import re
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
@@ -17,6 +18,56 @@ class LLMHelper:
     def __init__(self):
         """Initialize the LLM helper."""
         self.client = AsyncOpenAI()
+        
+    def _extract_json(self, text: str) -> str:
+        """Extract JSON from text that may contain other content.
+        
+        Args:
+            text: Text that may contain JSON
+            
+        Returns:
+            Extracted JSON string
+        """
+        # Try to find JSON object
+        obj_match = re.search(r'\{(?:[^{}]|(?R))*\}', text)
+        if obj_match:
+            return obj_match.group(0)
+            
+        # Try to find JSON array
+        arr_match = re.search(r'\[(?:[^\[\]]|(?R))*\]', text)
+        if arr_match:
+            return arr_match.group(0)
+            
+        return text
+        
+    def _parse_json_response(self, response_text: str, default_value: Any) -> Any:
+        """Parse JSON response from LLM, handling potential errors.
+        
+        Args:
+            response_text: Text to parse as JSON
+            default_value: Default value if parsing fails
+            
+        Returns:
+            Parsed JSON or default value
+        """
+        try:
+            # First try direct parsing
+            try:
+                return json.loads(response_text)
+            except json.JSONDecodeError:
+                pass
+                
+            # Try to extract and parse JSON
+            json_str = self._extract_json(response_text)
+            if not json_str:
+                logger.error("No JSON found in response")
+                return default_value
+                
+            return json.loads(json_str)
+            
+        except Exception as e:
+            logger.error(f"Failed to parse JSON response: {str(e)}", exc_info=True)
+            return default_value
     
     async def break_down_question(self, question: str) -> List[Dict[str, str]]:
         """Break down a complex question into sub-questions.
@@ -27,16 +78,13 @@ class LLMHelper:
         Returns:
             List of sub-questions with company info
         """
-        system_prompt = """You are a financial research assistant. Break down the given question into specific sub-questions that can be researched individually. Focus on key metrics like revenue growth, profit margins, and stock performance. For each sub-question, identify the company being asked about."""
+        system_prompt = """You are a financial research assistant. Break down the given question into specific sub-questions that can be researched individually. Focus on key metrics like revenue growth, profit margins, and stock performance. For each sub-question, identify the company being asked about.
+
+CRITICAL: Your response must contain ONLY a valid JSON array of questions, with no additional text or explanations. Each question must be a dictionary with 'question', 'company_name', and 'ticker' fields."""
         
         user_prompt = f"""Break down this question into specific sub-questions: {question}
         
-        Format each sub-question as a dictionary with:
-        - question: The specific question to research
-        - company_name: Name of the company (if applicable)
-        - ticker: Stock ticker symbol (if known)
-        
-        Example output:
+        Return ONLY a JSON array like this, with no additional text:
         [
             {{"question": "What was Apple's revenue growth in Q4 2024?", "company_name": "Apple", "ticker": "AAPL"}},
             {{"question": "How did Microsoft's profit margins change in 2024?", "company_name": "Microsoft", "ticker": "MSFT"}}
@@ -52,7 +100,7 @@ class LLMHelper:
                 temperature=0
             )
             
-            sub_questions = json.loads(response.choices[0].message.content)
+            sub_questions = self._parse_json_response(response.choices[0].message.content, [])
             logger.info(f"Generated {len(sub_questions)} sub-questions")
             return sub_questions
             
@@ -69,11 +117,13 @@ class LLMHelper:
         Returns:
             Dictionary with company_name and ticker
         """
-        system_prompt = """You are a financial research assistant. Extract company information from the given text. If multiple companies are mentioned, focus on the main company being discussed."""
+        system_prompt = """You are a financial research assistant. Extract company information from the given text. If multiple companies are mentioned, focus on the main company being discussed.
+
+CRITICAL: Your response must contain ONLY a valid JSON object, with no additional text or explanations. The object must have 'company_name' and 'ticker' fields."""
         
         user_prompt = f"""Extract the company name and ticker symbol from this text: {text}
         
-        Format the output as a dictionary:
+        Return ONLY a JSON object like this, with no additional text:
         {{
             "company_name": "Company Name",
             "ticker": "TICK"
@@ -89,7 +139,7 @@ class LLMHelper:
                 temperature=0
             )
             
-            return json.loads(response.choices[0].message.content)
+            return self._parse_json_response(response.choices[0].message.content, {})
             
         except Exception as e:
             logger.error(f"Failed to extract company info: {str(e)}", exc_info=True)
@@ -106,7 +156,14 @@ class LLMHelper:
         Returns:
             Analysis results
         """
-        system_prompt = """You are a financial analyst. Analyze the research results to generate insights, comparisons, limitations, and recommendations. Focus on key metrics and trends."""
+        system_prompt = """You are a financial analyst. Analyze the research results to generate insights, comparisons, limitations, and recommendations. Focus on key metrics and trends.
+
+CRITICAL: Your response must contain ONLY a valid JSON object with these fields, with no additional text or explanations:
+- insights: List of key insights (strings)
+- comparisons: List of comparative points (strings)
+- limitations: List of data limitations (strings)
+- recommendations: List of actionable recommendations (strings)
+- confidence: Confidence score (float between 0 and 1)"""
         
         # Prepare research data for each company
         research_data = {}
@@ -145,12 +202,14 @@ class LLMHelper:
 Research Data:
 {json.dumps(research_data, indent=2)}
 
-Format the analysis as a dictionary with:
-- insights: List of key insights
-- comparisons: List of comparative points between companies
-- limitations: List of data limitations or caveats
-- recommendations: List of actionable recommendations
-- confidence: Confidence score (0-1) in the analysis"""
+Return ONLY a JSON object like this, with no additional text:
+{{
+    "insights": ["Key insight 1", "Key insight 2"],
+    "comparisons": ["Comparison point 1", "Comparison point 2"],
+    "limitations": ["Limitation 1", "Limitation 2"],
+    "recommendations": ["Recommendation 1", "Recommendation 2"],
+    "confidence": 0.85
+}}"""
         
         try:
             response = await self.client.chat.completions.create(
@@ -162,7 +221,13 @@ Format the analysis as a dictionary with:
                 temperature=0.2
             )
             
-            analysis = json.loads(response.choices[0].message.content)
+            analysis = self._parse_json_response(response.choices[0].message.content, {
+                "insights": ["Analysis failed"],
+                "comparisons": [],
+                "limitations": ["Error processing results"],
+                "recommendations": [],
+                "confidence": 0
+            })
             logger.info("Completed analysis")
             return analysis
             
