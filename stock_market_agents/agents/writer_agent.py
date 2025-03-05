@@ -1,170 +1,123 @@
-"""Writer Agent for generating markdown reports from financial analysis.
-
-This agent is responsible for:
-1. Taking analysis results from the Manager Agent
-2. Generating well-structured markdown reports
-3. Adding visualizations and formatting
-4. Ensuring consistent style and readability
-"""
+"""Writer agent for generating markdown reports."""
 
 import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
-from ..models.research import AnalysisResults, ResearchResults
-from ..utils.markdown import (
-    create_header,
-    create_table,
-    create_chart,
-    format_currency,
-    format_percentage
-)
+from ..models.research import ResearchResults
 
 logger = logging.getLogger(__name__)
 
 class WriterAgent:
-    """Agent for generating markdown reports from financial analysis."""
+    """Agent for writing markdown reports."""
     
     def __init__(self):
-        """Initialize the WriterAgent."""
-        logger.info("Initialized WriterAgent")
+        """Initialize the writer agent."""
+        pass
         
-    async def generate_report(self, analysis: AnalysisResults) -> str:
-        """Generate a markdown report from analysis results.
+    async def write_report(self, question: str, results: List[ResearchResults], analysis: Dict[str, Any], output_path: str) -> None:
+        """Write a markdown report based on research results.
         
         Args:
-            analysis: Analysis results from the Manager Agent
-            
-        Returns:
-            Markdown formatted report
+            question: Original research question
+            results: List of research results
+            analysis: Analysis results from LLM
+            output_path: Path to save the report
         """
         try:
-            report_sections = []
+            logger.info("Generating markdown report")
             
-            # Add report header
-            report_sections.append(self._generate_header(analysis))
+            # Start with report header
+            report = f"""# Financial Analysis Report
+
+Analysis Time: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+Companies Analyzed: {", ".join(r.company_profile.ticker for r in results if r.company_profile)}
+Confidence Score: {analysis.get("confidence", 0)*100:.2f}%
+Data Sources: Alpha Vantage API, SEC Filings
+
+## Executive Summary
+
+Key Insights:
+{chr(10).join(f"- {insight}" for insight in analysis.get("insights", ["Analysis failed"]))}
+
+Comparative Analysis:
+{chr(10).join(f"- {comp}" for comp in analysis.get("comparisons", []))}
+
+Limitations:
+{chr(10).join(f"- {limit}" for limit in analysis.get("limitations", ["Error processing results"]))}
+
+Recommendations:
+{chr(10).join(f"- {rec}" for rec in analysis.get("recommendations", []))}
+
+## Company Analysis
+
+"""
             
-            # Add company analysis sections
-            for company_name, results in analysis.company_results.items():
-                report_sections.append(self._generate_company_section(company_name, results))
+            # Add section for each company
+            for result in results:
+                if not result.company_profile:
+                    continue
+                    
+                report += f"""
+### {result.company_profile.name} ({result.company_profile.ticker})
+
+Financial Health
+---------------
+| Metric | Value |
+|---|---|
+| Gross Margin | {result.company_profile.gross_margin:.2f}% |
+| Operating Margin | {result.company_profile.operating_margin:.2f}% |
+| Profit Margin | {result.company_profile.profit_margin:.2f}% |
+
+Growth Analysis
+--------------
+Revenue Growth (TTM): {result.company_profile.revenue_growth:.2f}%
+
+Quarterly Revenue Growth:
+| Quarter | Revenue |
+|---|---|
+"""
+                
+                # Add quarterly revenue data
+                if result.financial_metrics and result.financial_metrics.total_revenue:
+                    for i, revenue in enumerate(result.financial_metrics.total_revenue[:4]):
+                        report += f"| Q{i+1} | ${revenue:,.2f} |\n"
+                
+                # Add stock performance section
+                if result.stock_data:
+                    max_price = max(result.stock_data.historical_prices[:30]) * 1.1 if result.stock_data.historical_prices else 300
+                    price_data = str(result.stock_data.historical_prices[:30]).strip('[]') if result.stock_data.historical_prices else ''
+                    ma50_data = str([result.stock_data.ma_50] * 30).strip('[]')
+                    ma200_data = str([result.stock_data.ma_200] * 30).strip('[]')
+                    
+                    report += f"""
+Stock Performance
+----------------
+Current Price: ${result.stock_data.current_price:.2f}
+52-Week High: ${result.stock_data.high_52week:.2f}
+52-Week Low: ${result.stock_data.low_52week:.2f}
+RSI: {result.stock_data.rsi:.2f}
+Beta: {result.stock_data.beta:.2f}
+Volatility: {result.stock_data.volatility:.2f}%
+
+```mermaid
+xychart-beta
+title "{result.company_profile.ticker} Stock Price"
+x-axis ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30"]
+y-axis "Price ($)" 0 --> {max_price}
+line ["Price", "MA50", "MA200"]
+{price_data}
+{ma50_data}
+{ma200_data}
+```
+"""
             
-            return "\n\n".join(report_sections)
+            # Write report to file
+            with open(output_path, 'w') as f:
+                f.write(report)
+                
+            logger.info(f"Report saved to: {output_path}")
             
         except Exception as e:
             logger.error(f"Failed to generate report: {str(e)}", exc_info=True)
-            return f"Error generating report: {str(e)}"
-    
-    def _generate_header(self, analysis: AnalysisResults) -> str:
-        """Generate the report header.
-        
-        Args:
-            analysis: Analysis results
-            
-        Returns:
-            Markdown formatted header
-        """
-        header = [
-            create_header("Financial Analysis Report", level=1),
-            "",
-            f"Analysis Time: {analysis.analysis_time.strftime('%Y-%m-%d %H:%M:%S')}",
-            f"Companies Analyzed: {', '.join(analysis.company_results.keys())}",
-            f"Confidence Score: {format_percentage(analysis.confidence_score)}",
-            f"Data Sources: {', '.join(analysis.data_sources)}",
-            "",
-            create_header("Executive Summary", level=2),
-            "",
-            "Key Insights:",
-            *[f"- {insight}" for insight in analysis.key_insights],
-            "",
-            "Comparative Analysis:",
-            *[f"- {point}" for point in analysis.comparison_points],
-            "",
-            "Limitations:",
-            *[f"- {limitation}" for limitation in analysis.limitations],
-            "",
-            "Recommendations:",
-            *[f"- {recommendation}" for recommendation in analysis.recommendations],
-            "",
-            create_header("Company Analysis", level=2),
-            ""
-        ]
-        return "\n".join(header)
-    
-    def _generate_company_section(self, company_name: str, results: ResearchResults) -> str:
-        """Generate a company analysis section.
-        
-        Args:
-            company_name: Name of the company
-            results: Research results for the company
-            
-        Returns:
-            Markdown formatted company section
-        """
-        section = [
-            create_header(f"{results.company_profile.name} ({company_name})", level=3),
-            "",
-            "Financial Health",
-            "---------------",
-        ]
-        
-        # Add financial metrics table
-        if results.company_profile:
-            metrics_table = {
-                "Metric": ["Gross Margin", "Operating Margin", "Profit Margin"],
-                "Value": [
-                    format_percentage(results.company_profile.gross_margin),
-                    format_percentage(results.company_profile.operating_margin),
-                    format_percentage(results.company_profile.profit_margin)
-                ]
-            }
-            section.extend([
-                create_table(metrics_table),
-                ""
-            ])
-        
-        # Add growth analysis
-        if results.financial_metrics:
-            section.extend([
-                "Growth Analysis",
-                "--------------",
-                f"Revenue Growth (TTM): {format_percentage(results.company_profile.revenue_growth)}",
-                "",
-                "Quarterly Revenue Growth:",
-                create_table({
-                    "Quarter": [f"Q{i+1}" for i in range(len(results.financial_metrics.total_revenue[:4]))],
-                    "Revenue": [format_currency(rev) for rev in results.financial_metrics.total_revenue[:4]]
-                }),
-                ""
-            ])
-        
-        # Add stock performance
-        if results.stock_data:
-            section.extend([
-                "Stock Performance",
-                "----------------",
-                f"Current Price: {format_currency(results.stock_data.current_price)}",
-                f"52-Week High: {format_currency(results.stock_data.high_52week)}",
-                f"52-Week Low: {format_currency(results.stock_data.low_52week)}",
-                f"RSI: {results.stock_data.rsi:.2f}",
-                f"Beta: {results.stock_data.beta:.2f}",
-                f"Volatility: {format_percentage(results.stock_data.volatility)}",
-                ""
-            ])
-            
-            # Add price chart if we have historical data
-            if results.stock_data.historical_prices:
-                price_data = {
-                    "Price": results.stock_data.historical_prices[:30],  # Last 30 days
-                    "MA50": [results.stock_data.ma_50] * 30,
-                    "MA200": [results.stock_data.ma_200] * 30
-                }
-                section.extend([
-                    create_chart(
-                        title=f"{company_name} Stock Price",
-                        data=price_data,
-                        chart_type="line"
-                    ),
-                    ""
-                ])
-        
-        return "\n".join(section)
+            raise
