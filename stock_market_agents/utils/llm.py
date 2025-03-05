@@ -78,62 +78,128 @@ class LLMHelper:
         Returns:
             List of sub-questions with company info
         """
-        # For simple queries about a single company, create a direct mapping
-        # Check for common patterns like "analyze [company]'s [metrics]" or "[company] [metrics]"
-        company_patterns = [
-            r"(?:analyze|research|examine|study|investigate)\s+([A-Za-z0-9\s]+?)'s",
-            r"(?:analyze|research|examine|study|investigate)\s+([A-Za-z0-9\s]+)\s+(?:revenue|profit|growth|stock|share|performance)",
-            r"([A-Za-z0-9\s]+)'s\s+(?:revenue|profit|growth|stock|share|performance)",
-            r"([A-Za-z0-9\s]+)\s+(?:revenue|profit|growth|stock|share|performance)",
-        ]
-        
-        for pattern in company_patterns:
-            match = re.search(pattern, question)
-            if match:
-                company_name = match.group(1).strip()
-                logger.info(f"Extracted company name from question: {company_name}")
-                
-                # Get ticker if available
-                company_info = await self.extract_company_info(company_name)
-                ticker = company_info.get("ticker", "")
-                
-                # If company name is recognized, create direct sub-questions
-                return [
-                    {"question": f"What is {company_name}'s revenue growth?", "company_name": company_name, "ticker": ticker},
-                    {"question": f"What are {company_name}'s profit margins?", "company_name": company_name, "ticker": ticker},
-                    {"question": f"What is {company_name}'s recent financial performance?", "company_name": company_name, "ticker": ticker},
-                    {"question": f"What are the latest news about {company_name}?", "company_name": company_name, "ticker": ticker}
-                ]
-                
-        # For more complex questions, use LLM to break down
-        system_prompt = """You are a financial research assistant. Break down the given question into specific sub-questions that can be researched individually. Focus on key metrics like revenue growth, profit margins, and stock performance. For each sub-question, identify the company being asked about.
+        # First, analyze the question to understand what metrics are being requested
+        analysis_prompt = f"""Analyze this financial question and identify:
+1. The specific metrics or aspects being asked about
+2. The companies mentioned
+3. Any time periods or comparison points
+4. The context or purpose of the analysis
 
-CRITICAL: Your response must contain ONLY a valid JSON array of questions, with no additional text or explanations. Each question must be a dictionary with 'question', 'company_name', and 'ticker' fields."""
-        
-        user_prompt = f"""Break down this question into specific sub-questions: {question}
-        
-        Return ONLY a JSON array like this, with no additional text:
-        [
-            {{"question": "What was Apple's revenue growth in Q4 2024?", "company_name": "Apple", "ticker": "AAPL"}},
-            {{"question": "How did Microsoft's profit margins change in 2024?", "company_name": "Microsoft", "ticker": "MSFT"}}
-        ]"""
-        
+Question: {question}
+
+Return ONLY a JSON object with these fields:
+{{
+    "metrics": ["list of specific metrics requested"],
+    "companies": ["list of companies mentioned"],
+    "time_periods": ["list of time periods mentioned"],
+    "context": "brief description of analysis purpose"
+}}"""
+
         try:
-            response = await self.client.chat.completions.create(
+            # Get question analysis
+            analysis_response = await self.client.chat.completions.create(
                 model="gpt-4",
                 messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
+                    {"role": "system", "content": "You are a financial analysis expert. Analyze the question and return ONLY a JSON object with the specified fields."},
+                    {"role": "user", "content": analysis_prompt}
                 ],
-                temperature=0
+                temperature=0.2
             )
             
-            sub_questions = self._parse_json_response(response.choices[0].message.content, [])
-            logger.info(f"Generated {len(sub_questions)} sub-questions")
-            return sub_questions
+            analysis = self._parse_json_response(analysis_response.choices[0].message.content, {
+                "metrics": [],
+                "companies": [],
+                "time_periods": [],
+                "context": ""
+            })
+            
+            # Now generate specific sub-questions based on the analysis
+            sub_questions_prompt = f"""Based on this analysis:
+{json.dumps(analysis, indent=2)}
+
+Generate specific sub-questions that will help answer the original question: {question}
+
+Requirements:
+1. Each sub-question should focus on a specific metric or aspect
+2. Include time periods if specified
+3. Make comparisons if multiple companies are mentioned
+4. Consider the analysis context
+5. Include both quantitative and qualitative aspects
+
+Return ONLY a JSON array of sub-questions, each with:
+{{
+    "question": "specific sub-question",
+    "company_name": "company name",
+    "ticker": "company ticker if known",
+    "metric": "specific metric being asked about",
+    "time_period": "time period if specified"
+}}"""
+
+            # Generate sub-questions
+            sub_questions_response = await self.client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "You are a financial research expert. Generate specific sub-questions based on the analysis and return ONLY a JSON array."},
+                    {"role": "user", "content": sub_questions_prompt}
+                ],
+                temperature=0.3  # Slightly higher temperature for more variety
+            )
+            
+            sub_questions = self._parse_json_response(sub_questions_response.choices[0].message.content, [])
+            
+            # Validate and clean up sub-questions
+            validated_questions = []
+            for q in sub_questions:
+                # Ensure required fields
+                if not q.get("question") or not q.get("company_name"):
+                    continue
+                    
+                # Try to get ticker if not provided
+                if not q.get("ticker"):
+                    company_info = await self.extract_company_info(q["company_name"])
+                    q["ticker"] = company_info.get("ticker", "")
+                
+                validated_questions.append(q)
+            
+            logger.info(f"Generated {len(validated_questions)} validated sub-questions")
+            return validated_questions
             
         except Exception as e:
             logger.error(f"Failed to break down question: {str(e)}", exc_info=True)
+            # Fallback to basic pattern matching if LLM fails
+            company_patterns = [
+                r"(?:analyze|research|examine|study|investigate)\s+([A-Za-z0-9\s]+?)'s",
+                r"(?:analyze|research|examine|study|investigate)\s+([A-Za-z0-9\s]+)\s+(?:revenue|profit|growth|stock|share|performance)",
+                r"([A-Za-z0-9\s]+)'s\s+(?:revenue|profit|growth|stock|share|performance)",
+                r"([A-Za-z0-9\s]+)\s+(?:revenue|profit|growth|stock|share|performance)",
+            ]
+            
+            for pattern in company_patterns:
+                match = re.search(pattern, question)
+                if match:
+                    company_name = match.group(1).strip()
+                    company_info = await self.extract_company_info(company_name)
+                    ticker = company_info.get("ticker", "")
+                    
+                    # Generate more focused sub-questions based on the original question
+                    metrics = ["revenue growth", "profit margins", "financial performance", "stock performance"]
+                    if "revenue" in question.lower():
+                        metrics = ["revenue growth", "revenue trends", "revenue by segment"]
+                    elif "profit" in question.lower():
+                        metrics = ["profit margins", "operating margins", "net income"]
+                    elif "stock" in question.lower():
+                        metrics = ["stock price", "stock performance", "trading volume"]
+                    
+                    return [
+                        {
+                            "question": f"What is {company_name}'s {metric}?",
+                            "company_name": company_name,
+                            "ticker": ticker,
+                            "metric": metric
+                        }
+                        for metric in metrics
+                    ]
+            
             return []
     
     async def extract_company_info(self, text: str) -> Dict[str, str]:
