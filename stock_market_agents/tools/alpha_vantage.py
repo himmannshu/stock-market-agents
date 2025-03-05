@@ -30,14 +30,16 @@ class APIEndpoint:
 class AlphaVantageTool:
     """Tool for interacting with Alpha Vantage API"""
     
-    def __init__(self, api_key: str, collection_name: str = "alpha_vantage_endpoints"):
+    def __init__(self, collection_name: str = "alpha_vantage_endpoints"):
         """Initialize the Alpha Vantage tool
         
         Args:
-            api_key: Alpha Vantage API key
             collection_name: Name for the ChromaDB collection
         """
-        self.api_key = api_key
+        self.api_key = os.getenv("ALPHA_VANTAGE_API_KEY")
+        if not self.api_key:
+            raise ValueError("ALPHA_VANTAGE_API_KEY environment variable not set")
+            
         self.base_url = "https://www.alphavantage.co/query"
         self.docs_url = "https://www.alphavantage.co/documentation/"
         self.collection_name = collection_name

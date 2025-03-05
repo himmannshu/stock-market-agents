@@ -51,6 +51,7 @@ htmlcov/
 .ruff_cache/
 .mypy_cache/
 cache/
+reports/
 
 # Jupyter Notebook
 .ipynb_checkpoints/

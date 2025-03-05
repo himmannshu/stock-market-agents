@@ -1,14 +1,27 @@
 # Stock Market Agents
 
-A Python project that provides intelligent agents for interacting with stock market data using the Alpha Vantage API and LLM capabilities.
+A Python project that provides intelligent agents for analyzing stock market data using the Alpha Vantage API, SEC filings, and LLM capabilities.
 
 ## Features
 
-- **Alpha Vantage API Integration**: Seamless integration with Alpha Vantage's comprehensive financial data API
-- **Documentation Scraping**: Automatic scraping and parsing of Alpha Vantage API documentation
-- **Semantic Search**: Intelligent endpoint discovery using ChromaDB for semantic search
-- **LLM Integration**: Integration with OpenAI's GPT models for intelligent query processing
-- **Web Search Capabilities**: Integration with Tavily for real-time market research
+- **Multi-Agent System**: Coordinated agents for research, analysis, and report generation
+  - Manager Agent: Orchestrates research tasks and generates comprehensive reports
+  - Researcher Agent: Gathers and processes financial data from multiple sources
+  - Writer Agent: Formats analysis results into well-structured markdown reports
+- **Financial Data Integration**:
+  - Alpha Vantage API for real-time market data
+  - SEC EDGAR database for company filings
+  - Semantic search for intelligent endpoint discovery using ChromaDB
+- **Comprehensive Analysis**:
+  - Revenue growth and profit margins
+  - Stock performance metrics (RSI, Beta, Volatility)
+  - Technical indicators (Moving Averages)
+  - Comparative analysis between companies
+- **LLM Integration**: OpenAI's GPT models for:
+  - Breaking down complex financial questions
+  - Analyzing research results
+  - Generating insights and recommendations
+- **Web Search**: Tavily integration for real-time market research
 
 ## Installation
 
@@ -39,50 +52,62 @@ TAVILY_API_KEY=your_tavily_key_here
 
 ## Usage
 
-### Alpha Vantage Tool
-
-The `AlphaVantageTool` class provides a powerful interface for interacting with the Alpha Vantage API:
+### Example: Financial Research
 
 ```python
-from stock_market_agents.tools.alpha_vantage import AlphaVantageTool
+from stock_market_agents.agents.manager_agent import ManagerAgent
 
-# Initialize the tool
-tool = AlphaVantageTool(api_key="your_api_key")
+# Initialize the manager agent
+manager = ManagerAgent()
 
-# Scrape and embed API documentation
-endpoints = tool.scrape_documentation()
-tool.embed_documentation(endpoints)
+# Research a financial question
+question = "Compare Apple and Microsoft's financial performance"
+report = await manager.research(question)
 
-# Query for relevant endpoints
-results = tool.query("How to get stock price data?")
-
-# Make API calls
-data = tool.call_endpoint(
-    function="TIME_SERIES_DAILY",
-    symbol="GOOGL"
-)
+# The report will be saved in the reports/ directory
+print(f"Report saved to: {report}")
 ```
 
-### Jupyter Notebook Integration
+### Example: Custom Research
 
-The project includes Jupyter notebook examples demonstrating:
-- Setting up the environment
-- Using the Alpha Vantage tool
-- Integrating with LLM models
-- Performing market research
+```python
+from stock_market_agents.agents.researcher_agent import ResearcherAgent
+
+# Initialize the researcher agent
+researcher = ResearcherAgent()
+
+# Research specific aspects
+results = await researcher.research_question({
+    "question": "What was Apple's revenue growth?",
+    "company_name": "Apple",
+    "ticker": "AAPL"
+})
+
+# Access the research results
+print(f"Revenue Growth: {results.financial_metrics.revenue_growth}")
+print(f"Profit Margin: {results.company_profile.profit_margin}")
+```
 
 ## Project Structure
 
 ```
 stock-market-agents/
 ├── stock_market_agents/
-│   └── tools/
-│       └── alpha_vantage.py
+│   ├── agents/
+│   │   ├── manager_agent.py
+│   │   ├── researcher_agent.py
+│   │   └── writer_agent.py
+│   ├── models/
+│   │   └── research.py
+│   ├── tools/
+│   │   ├── alpha_vantage.py
+│   │   └── sec.py
+│   └── utils/
+│       └── llm.py
+├── examples/
+│   └── research_example.py
 ├── tests/
-│   └── test_alpha_vantage.py
-├── notebooks/
-│   └── stock_market_agent.ipynb
-├── requirements.txt
+├── reports/  # Generated markdown reports
 └── README.md
 ```
 
@@ -94,6 +119,12 @@ stock-market-agents/
 python -m pytest tests/
 ```
 
+### Running Examples
+
+```bash
+python examples/research_example.py
+```
+
 ### Adding New Features
 
 1. Create a new branch for your feature
@@ -103,12 +134,13 @@ python -m pytest tests/
 
 ## Dependencies
 
-- `requests`: For making HTTP requests
-- `beautifulsoup4`: For parsing HTML documentation
-- `chromadb`: For semantic search capabilities
+Core dependencies (see `requirements.txt` for full list):
 - `openai`: For LLM integration
-- `tavily-python`: For web search capabilities
-- Other dependencies listed in `requirements.txt`
+- `chromadb`: For semantic search
+- `tavily-python`: For web search
+- `pandas`: For data processing
+- `matplotlib`: For generating charts
+- `requests`: For API calls
 
 ## Contributing
 
@@ -117,4 +149,3 @@ python -m pytest tests/
 3. Commit your changes
 4. Push to the branch
 5. Create a new Pull Request
-
