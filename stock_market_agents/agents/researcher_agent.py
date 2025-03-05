@@ -143,29 +143,110 @@ Remember to:
                     industry=overview.get("Industry", ""),
                     market_cap=float(overview.get("MarketCapitalization", 0)),
                     pe_ratio=float(overview.get("PERatio", 0)),
+                    profit_margin=float(overview.get("ProfitMargin", 0)),
+                    revenue_growth=float(overview.get("QuarterlyRevenueGrowthYOY", 0)),
+                    # Optional fields with default values
                     gross_margin=float(overview.get("GrossMargin", 0)),
                     operating_margin=float(overview.get("OperatingMargin", 0)),
-                    profit_margin=float(overview.get("ProfitMargin", 0)),
-                    revenue_growth=float(overview.get("QuarterlyRevenueGrowthYOY", 0))
+                    description=overview.get("Description", ""),
+                    exchange=overview.get("Exchange", ""),
+                    peg_ratio=float(overview.get("PEGRatio", 0)),
+                    beta=float(overview.get("Beta", 0)),
+                    rsi=float(overview.get("RSI", 0)),
+                    macd=float(overview.get("MACD", 0)),
+                    dividend_yield=float(overview.get("DividendYield", 0)),
+                    roe=float(overview.get("ReturnOnEquityTTM", 0)),
+                    roa=float(overview.get("ReturnOnAssetsTTM", 0)),
+                    debt_to_equity=float(overview.get("DebtToEquityRatio", 0)),
+                    current_ratio=float(overview.get("CurrentRatio", 0)),
+                    quick_ratio=float(overview.get("QuickRatio", 0))
                 )
                 
             # Fall back to SEC data if available
             elif sec_data:
-                facts = sec_data.get("facts", {})
-                return CompanyProfile(
-                    name=facts.get("entityName", ""),
-                    ticker=facts.get("tradingSymbol", ""),
-                    sector=facts.get("sic", {}).get("industry", ""),
-                    industry=facts.get("sic", {}).get("sector", ""),
-                    market_cap=0,  # Not available in SEC data
-                    pe_ratio=0,    # Not available in SEC data
-                    gross_margin=0, # Would need to calculate from financial statements
-                    operating_margin=0,
-                    profit_margin=0,
-                    revenue_growth=0
-                )
+                # Handle case where sec_data is a list
+                if isinstance(sec_data, list) and len(sec_data) > 0:
+                    company_data = sec_data[0]  # Take first company's data
+                    return CompanyProfile(
+                        name=company_data.get("name", ""),
+                        ticker=company_data.get("ticker", ""),
+                        sector=company_data.get("sector", ""),
+                        industry=company_data.get("industry", ""),
+                        market_cap=0,  # Not available in SEC data
+                        pe_ratio=0,    # Not available in SEC data
+                        profit_margin=0,
+                        revenue_growth=0,
+                        # Optional fields with default values
+                        gross_margin=0,
+                        operating_margin=0,
+                        description="",
+                        exchange="",
+                        peg_ratio=0,
+                        beta=0,
+                        rsi=0,
+                        macd=0,
+                        dividend_yield=0,
+                        roe=0,
+                        roa=0,
+                        debt_to_equity=0,
+                        current_ratio=0,
+                        quick_ratio=0
+                    )
+                # Handle case where sec_data is a dict
+                elif isinstance(sec_data, dict):
+                    facts = sec_data.get("facts", {})
+                    return CompanyProfile(
+                        name=facts.get("entityName", ""),
+                        ticker=facts.get("tradingSymbol", ""),
+                        sector=facts.get("sic", {}).get("industry", ""),
+                        industry=facts.get("sic", {}).get("sector", ""),
+                        market_cap=0,  # Not available in SEC data
+                        pe_ratio=0,    # Not available in SEC data
+                        profit_margin=0,
+                        revenue_growth=0,
+                        # Optional fields with default values
+                        gross_margin=0,
+                        operating_margin=0,
+                        description="",
+                        exchange="",
+                        peg_ratio=0,
+                        beta=0,
+                        rsi=0,
+                        macd=0,
+                        dividend_yield=0,
+                        roe=0,
+                        roa=0,
+                        debt_to_equity=0,
+                        current_ratio=0,
+                        quick_ratio=0
+                    )
                 
-            return None
+            # If no data is available, return a minimal profile
+            return CompanyProfile(
+                name="",
+                ticker="",
+                sector="",
+                industry="",
+                market_cap=0,
+                pe_ratio=0,
+                profit_margin=0,
+                revenue_growth=0,
+                # Optional fields with default values
+                gross_margin=0,
+                operating_margin=0,
+                description="",
+                exchange="",
+                peg_ratio=0,
+                beta=0,
+                rsi=0,
+                macd=0,
+                dividend_yield=0,
+                roe=0,
+                roa=0,
+                debt_to_equity=0,
+                current_ratio=0,
+                quick_ratio=0
+            )
             
         except Exception as e:
             logger.error(f"Failed to process company profile: {str(e)}", exc_info=True)
@@ -319,9 +400,10 @@ Remember to:
         question = question_data.get("question", "")
         company_name = question_data.get("company_name", "")
         ticker = question_data.get("ticker", "")
+        metric = question_data.get("metric", "")
         
         logger.info(f"Researching question: {question}")
-        logger.info(f"Company: {company_name}, Ticker: {ticker}")
+        logger.info(f"Company: {company_name}, Ticker: {ticker}, Metric: {metric}")
         
         try:
             # If company name is provided but ticker is not, extract the ticker
@@ -340,39 +422,44 @@ Remember to:
             # Add validation for ticker to ensure it's valid
             if not ticker:
                 logger.warning("No ticker found for research question")
-                
-            # Get company data from Alpha Vantage
-            overview = None
-            income = None
-            balance = None
-            stock = None
+            
+            # Find relevant Alpha Vantage endpoints based on the question and metric
+            relevant_endpoints = self.alpha_vantage.query_endpoints(question)
+            logger.info(f"Found {len(relevant_endpoints)} relevant Alpha Vantage endpoints")
+            
+            # Get company data from Alpha Vantage using relevant endpoints
+            alpha_vantage_data = {}
             alpha_vantage_success = True
             
             try:
-                logger.info(f"Fetching company overview for {ticker}")
-                overview = await self._call_with_retry("OVERVIEW", symbol=ticker)
-                
-                logger.info(f"Fetching income statement for {ticker}")
-                income = await self._call_with_retry("INCOME_STATEMENT", symbol=ticker)
-                
-                logger.info(f"Fetching balance sheet for {ticker}")
-                balance = await self._call_with_retry("BALANCE_SHEET", symbol=ticker)
-                
-                logger.info(f"Fetching stock data for {ticker}")
-                stock = await self._call_with_retry("TIME_SERIES_DAILY", symbol=ticker, outputsize="full")
+                for endpoint in relevant_endpoints:
+                    logger.info(f"Fetching data from endpoint: {endpoint.name}")
+                    try:
+                        # Prepare parameters for the endpoint
+                        params = {"symbol": ticker}
+                        if endpoint.required_params:
+                            for param in endpoint.required_params:
+                                if param not in params:
+                                    # Add default values for required parameters
+                                    if param == "interval":
+                                        params[param] = "daily"
+                                    elif param == "outputsize":
+                                        params[param] = "full"
+                                    elif param == "time_period":
+                                        params[param] = "14"
+                        
+                        # Call the endpoint
+                        data = await self._call_with_retry(endpoint.function, **params)
+                        if data:
+                            alpha_vantage_data[endpoint.name] = data
+                            self._log_raw_data(data, "alpha_vantage", endpoint.name)
+                    except Exception as e:
+                        logger.error(f"Failed to fetch data from endpoint {endpoint.name}: {str(e)}")
+                        continue
+                        
             except Exception as e:
                 alpha_vantage_success = False
                 logger.error(f"Alpha Vantage API error: {str(e)}. Will try SEC data.")
-            
-            # Log raw Alpha Vantage data
-            if overview:
-                self._log_raw_data(overview, "alpha_vantage", "overview")
-            if income:
-                self._log_raw_data(income, "alpha_vantage", "income")
-            if balance:
-                self._log_raw_data(balance, "alpha_vantage", "balance")
-            if stock:
-                self._log_raw_data(stock, "alpha_vantage", "stock")
             
             # Get SEC data regardless of Alpha Vantage success, to supplement information
             sec_data = None
@@ -417,14 +504,29 @@ Remember to:
                         logger.error(f"Failed to get financial metrics: {str(e)}")
             
             # Process all available data
-            company_profile = self._process_company_profile(overview, sec_data)
-            financial_metrics = self._process_financial_metrics(income, sec_data)
-            balance_sheet = self._process_balance_sheet(balance, sec_data)
-            stock_data = self._process_stock_data(stock) if stock else None
+            company_profile = self._process_company_profile(alpha_vantage_data.get("OVERVIEW"), sec_data)
+            financial_metrics = self._process_financial_metrics(alpha_vantage_data.get("INCOME_STATEMENT"), sec_data)
+            balance_sheet = self._process_balance_sheet(alpha_vantage_data.get("BALANCE_SHEET"), sec_data)
+            stock_data = self._process_stock_data(alpha_vantage_data.get("TIME_SERIES_DAILY"))
             news_data = NewsData(articles=news_articles) if news_articles else None
             
+            # Process any additional data from other endpoints
+            additional_metrics = {}
+            for endpoint_name, data in alpha_vantage_data.items():
+                if endpoint_name not in ["OVERVIEW", "INCOME_STATEMENT", "BALANCE_SHEET", "TIME_SERIES_DAILY"]:
+                    try:
+                        # Try to extract relevant metrics from the data
+                        if "Technical Analysis" in endpoint_name:
+                            additional_metrics.update(self._extract_technical_indicators(data))
+                        elif "Fundamental Data" in endpoint_name:
+                            additional_metrics.update(self._extract_fundamental_data(data))
+                        elif "Economic Indicators" in endpoint_name:
+                            additional_metrics.update(self._extract_economic_indicators(data))
+                    except Exception as e:
+                        logger.error(f"Failed to process data from endpoint {endpoint_name}: {str(e)}")
+            
             # Ensure we have some data from all sources combined
-            if not company_profile and not financial_metrics and not balance_sheet and not stock_data and not news_data:
+            if not company_profile and not financial_metrics and not balance_sheet and not stock_data and not news_data and not additional_metrics:
                 error_msg = "Failed to retrieve any valid data from available sources"
                 logger.error(error_msg)
                 return ResearchResults(
@@ -454,6 +556,10 @@ Remember to:
                     revenue_growth=0
                 )
             
+            # Update company profile with additional metrics if available
+            if additional_metrics:
+                company_profile = self._update_company_profile(company_profile, additional_metrics)
+            
             logger.info("Successfully processed research data")
             return ResearchResults(
                 question=question,
@@ -476,6 +582,207 @@ Remember to:
                 news_data=None,
                 error=error_msg
             )
+            
+    def _extract_technical_indicators(self, data: Dict[str, Any]) -> Dict[str, float]:
+        """Extract technical indicators from Alpha Vantage data.
+        
+        Args:
+            data: Raw Alpha Vantage data
+            
+        Returns:
+            Dictionary of technical indicators
+        """
+        indicators = {}
+        try:
+            # Handle different data formats
+            if "Technical Analysis" in data:
+                for indicator, values in data["Technical Analysis"].items():
+                    if isinstance(values, dict):
+                        if "value" in values:
+                            indicators[indicator] = float(values["value"])
+                        elif "value" in values.get("Technical Analysis", {}):
+                            indicators[indicator] = float(values["Technical Analysis"]["value"])
+            elif "Technical Indicators" in data:
+                for indicator, values in data["Technical Indicators"].items():
+                    if isinstance(values, dict):
+                        if "value" in values:
+                            indicators[indicator] = float(values["value"])
+                        elif "value" in values.get("Technical Indicators", {}):
+                            indicators[indicator] = float(values["Technical Indicators"]["value"])
+            elif "RSI" in data:
+                indicators["RSI"] = float(data["RSI"])
+            elif "MACD" in data:
+                indicators["MACD"] = float(data["MACD"])
+            elif "Beta" in data:
+                indicators["Beta"] = float(data["Beta"])
+            elif "PEG Ratio" in data:
+                indicators["PEG Ratio"] = float(data["PEG Ratio"])
+            elif "Dividend Yield" in data:
+                indicators["Dividend Yield"] = float(data["Dividend Yield"])
+            elif "Return on Equity" in data:
+                indicators["Return on Equity"] = float(data["Return on Equity"])
+            elif "Return on Assets" in data:
+                indicators["Return on Assets"] = float(data["Return on Assets"])
+            elif "Debt to Equity" in data:
+                indicators["Debt to Equity"] = float(data["Debt to Equity"])
+            elif "Current Ratio" in data:
+                indicators["Current Ratio"] = float(data["Current Ratio"])
+            elif "Quick Ratio" in data:
+                indicators["Quick Ratio"] = float(data["Quick Ratio"])
+        except Exception as e:
+            logger.error(f"Failed to extract technical indicators: {str(e)}")
+        return indicators
+        
+    def _extract_fundamental_data(self, data: Dict[str, Any]) -> Dict[str, float]:
+        """Extract fundamental data from Alpha Vantage data.
+        
+        Args:
+            data: Raw Alpha Vantage data
+            
+        Returns:
+            Dictionary of fundamental metrics
+        """
+        metrics = {}
+        try:
+            # Handle different data formats
+            if "Fundamental Data" in data:
+                for metric, values in data["Fundamental Data"].items():
+                    if isinstance(values, dict):
+                        if "value" in values:
+                            metrics[metric] = float(values["value"])
+                        elif "value" in values.get("Fundamental Data", {}):
+                            metrics[metric] = float(values["Fundamental Data"]["value"])
+            elif "Overview" in data:
+                # Extract metrics from company overview
+                overview = data["Overview"]
+                if "PERatio" in overview:
+                    metrics["PEG Ratio"] = float(overview["PERatio"])
+                if "Beta" in overview:
+                    metrics["Beta"] = float(overview["Beta"])
+                if "DividendYield" in overview:
+                    metrics["Dividend Yield"] = float(overview["DividendYield"])
+                if "ReturnOnEquityTTM" in overview:
+                    metrics["Return on Equity"] = float(overview["ReturnOnEquityTTM"])
+                if "ReturnOnAssetsTTM" in overview:
+                    metrics["Return on Assets"] = float(overview["ReturnOnAssetsTTM"])
+                if "DebtToEquityRatio" in overview:
+                    metrics["Debt to Equity"] = float(overview["DebtToEquityRatio"])
+                if "CurrentRatio" in overview:
+                    metrics["Current Ratio"] = float(overview["CurrentRatio"])
+                if "QuickRatio" in overview:
+                    metrics["Quick Ratio"] = float(overview["QuickRatio"])
+            elif "Income Statement" in data:
+                # Extract metrics from income statement
+                income = data["Income Statement"]
+                if "quarterlyReports" in income and income["quarterlyReports"]:
+                    latest = income["quarterlyReports"][0]
+                    if "netIncome" in latest and "totalRevenue" in latest:
+                        metrics["Profit Margin"] = float(latest["netIncome"]) / float(latest["totalRevenue"])
+            elif "Balance Sheet" in data:
+                # Extract metrics from balance sheet
+                balance = data["Balance Sheet"]
+                if "quarterlyReports" in balance and balance["quarterlyReports"]:
+                    latest = balance["quarterlyReports"][0]
+                    if "totalAssets" in latest and "totalLiabilities" in latest:
+                        metrics["Debt to Equity"] = float(latest["totalLiabilities"]) / (float(latest["totalAssets"]) - float(latest["totalLiabilities"]))
+        except Exception as e:
+            logger.error(f"Failed to extract fundamental data: {str(e)}")
+        return metrics
+        
+    def _extract_economic_indicators(self, data: Dict[str, Any]) -> Dict[str, float]:
+        """Extract economic indicators from Alpha Vantage data.
+        
+        Args:
+            data: Raw Alpha Vantage data
+            
+        Returns:
+            Dictionary of economic indicators
+        """
+        indicators = {}
+        try:
+            # Handle different data formats
+            if "Economic Indicators" in data:
+                for indicator, values in data["Economic Indicators"].items():
+                    if isinstance(values, dict):
+                        if "value" in values:
+                            indicators[indicator] = float(values["value"])
+                        elif "value" in values.get("Economic Indicators", {}):
+                            indicators[indicator] = float(values["Economic Indicators"]["value"])
+            elif "Global Quote" in data:
+                # Extract market indicators from global quote
+                quote = data["Global Quote"]
+                if "05. price" in quote:
+                    indicators["Current Price"] = float(quote["05. price"])
+                if "09. change" in quote:
+                    indicators["Price Change"] = float(quote["09. change"])
+                if "10. change percent" in quote:
+                    indicators["Price Change %"] = float(quote["10. change percent"].strip("%"))
+            elif "Time Series (Daily)" in data:
+                # Extract market indicators from daily time series
+                time_series = data["Time Series (Daily)"]
+                if time_series:
+                    latest_date = max(time_series.keys())
+                    latest_data = time_series[latest_date]
+                    if "4. close" in latest_data:
+                        indicators["Current Price"] = float(latest_data["4. close"])
+                    if "2. high" in latest_data:
+                        indicators["Daily High"] = float(latest_data["2. high"])
+                    if "3. low" in latest_data:
+                        indicators["Daily Low"] = float(latest_data["3. low"])
+                    if "5. volume" in latest_data:
+                        indicators["Volume"] = float(latest_data["5. volume"])
+            elif "Forex (Daily)" in data:
+                # Extract forex indicators
+                forex = data["Forex (Daily)"]
+                if forex:
+                    latest_date = max(forex.keys())
+                    latest_data = forex[latest_date]
+                    if "4. close" in latest_data:
+                        indicators["Exchange Rate"] = float(latest_data["4. close"])
+            elif "Realtime Currency Exchange Rate" in data:
+                # Extract currency exchange rate
+                exchange = data["Realtime Currency Exchange Rate"]
+                if "5. Exchange Rate" in exchange:
+                    indicators["Exchange Rate"] = float(exchange["5. Exchange Rate"])
+        except Exception as e:
+            logger.error(f"Failed to extract economic indicators: {str(e)}")
+        return indicators
+        
+    def _update_company_profile(self, profile: CompanyProfile, additional_metrics: Dict[str, float]) -> CompanyProfile:
+        """Update company profile with additional metrics.
+        
+        Args:
+            profile: Existing company profile
+            additional_metrics: Additional metrics to add
+            
+        Returns:
+            Updated company profile
+        """
+        try:
+            # Map additional metrics to profile fields
+            metric_mapping = {
+                "RSI": "rsi",
+                "MACD": "macd",
+                "Beta": "beta",
+                "PEG Ratio": "peg_ratio",
+                "Dividend Yield": "dividend_yield",
+                "Return on Equity": "roe",
+                "Return on Assets": "roa",
+                "Debt to Equity": "debt_to_equity",
+                "Current Ratio": "current_ratio",
+                "Quick Ratio": "quick_ratio"
+            }
+            
+            # Update profile with available metrics
+            for metric, value in additional_metrics.items():
+                if metric in metric_mapping:
+                    setattr(profile, metric_mapping[metric], value)
+                    
+            return profile
+            
+        except Exception as e:
+            logger.error(f"Failed to update company profile: {str(e)}")
+            return profile
 
     async def research_concurrent(self, sub_questions: List[Dict[str, str]]) -> List[ResearchResults]:
         """Research multiple questions concurrently.

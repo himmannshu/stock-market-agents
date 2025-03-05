@@ -13,10 +13,23 @@ class CompanyProfile:
     industry: str
     market_cap: float
     pe_ratio: float
-    gross_margin: float
-    operating_margin: float
     profit_margin: float
     revenue_growth: float
+    # Optional fields with default values
+    gross_margin: float = 0.0
+    operating_margin: float = 0.0
+    description: str = ""
+    exchange: str = ""
+    peg_ratio: float = 0.0
+    beta: float = 0.0
+    rsi: float = 0.0
+    macd: float = 0.0
+    dividend_yield: float = 0.0
+    roe: float = 0.0
+    roa: float = 0.0
+    debt_to_equity: float = 0.0
+    current_ratio: float = 0.0
+    quick_ratio: float = 0.0
 
 @dataclass
 class FinancialMetrics:
