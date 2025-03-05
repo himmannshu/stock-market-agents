@@ -9,7 +9,7 @@ import pandas as pd
 
 from ..tools.alpha_vantage import AlphaVantageTool
 from ..tools.sec import SECTool
-from ..tools.news import NewsTool
+from ..tools.news import WebSearchTool
 from ..utils.llm import LLMHelper
 from ..models.research import (
     CompanyProfile, FinancialMetrics, StockData, 
@@ -27,7 +27,7 @@ class ResearcherAgent(BaseAgent):
         super().__init__()
         self.alpha_vantage = AlphaVantageTool()
         self.sec = SECTool()
-        self.news = NewsTool()
+        self.news = WebSearchTool()
         self.llm = LLMHelper()
         self.rate_limit_delay = 60  # Delay in seconds when rate limited
         self.max_retries = 3
@@ -316,39 +316,53 @@ Remember to:
         Returns:
             Research results
         """
-        question = question_data["question"]
-        company_name = question_data.get("company_name")
-        ticker = question_data.get("ticker")
+        question = question_data.get("question", "")
+        company_name = question_data.get("company_name", "")
+        ticker = question_data.get("ticker", "")
         
         logger.info(f"Researching question: {question}")
-        logger.debug(f"Company info - Name: {company_name}, Ticker: {ticker}")
+        logger.info(f"Company: {company_name}, Ticker: {ticker}")
         
         try:
-            # If no company info provided, try to extract it
-            if not company_name and not ticker:
-                logger.debug("Extracting company info from question")
+            # If company name is provided but ticker is not, extract the ticker
+            if company_name and not ticker:
+                company_info = await self.llm.extract_company_info(company_name)
+                ticker = company_info.get("ticker", "")
+                logger.info(f"Extracted ticker: {ticker}")
+            
+            # If ticker is not available, try to extract from question
+            if not ticker and not company_name:
                 company_info = await self.llm.extract_company_info(question)
-                company_name = company_info.get("company_name")
-                ticker = company_info.get("ticker")
-                logger.info(f"Extracted company info - Name: {company_name}, Ticker: {ticker}")
+                company_name = company_info.get("company_name", "")
+                ticker = company_info.get("ticker", "")
+                logger.info(f"Extracted company: {company_name}, ticker: {ticker}")
             
+            # Add validation for ticker to ensure it's valid
             if not ticker:
-                return ResearchResults(
-                    question=question,
-                    company_profile=None,
-                    financial_metrics=None,
-                    balance_sheet=None,
-                    stock_data=None,
-                    news_data=None,
-                    error="No ticker symbol available"
-                )
+                logger.warning("No ticker found for research question")
+                
+            # Get company data from Alpha Vantage
+            overview = None
+            income = None
+            balance = None
+            stock = None
+            alpha_vantage_success = True
             
-            # Try Alpha Vantage first
-            logger.debug("Querying Alpha Vantage endpoints")
-            overview = await self._call_with_retry("OVERVIEW", symbol=ticker)
-            income = await self._call_with_retry("INCOME_STATEMENT", symbol=ticker)
-            balance = await self._call_with_retry("BALANCE_SHEET", symbol=ticker)
-            stock = await self._call_with_retry("TIME_SERIES_DAILY", symbol=ticker, outputsize="full")
+            try:
+                logger.info(f"Fetching company overview for {ticker}")
+                overview = await self._call_with_retry("OVERVIEW", symbol=ticker)
+                
+                logger.info(f"Fetching income statement for {ticker}")
+                income = await self._call_with_retry("INCOME_STATEMENT", symbol=ticker)
+                
+                logger.info(f"Fetching balance sheet for {ticker}")
+                balance = await self._call_with_retry("BALANCE_SHEET", symbol=ticker)
+                
+                logger.info(f"Fetching stock data for {ticker}")
+                stock = await self._call_with_retry("TIME_SERIES_DAILY", symbol=ticker, outputsize="full")
+            except Exception as e:
+                alpha_vantage_success = False
+                logger.error(f"Alpha Vantage API error: {str(e)}. Will try SEC data.")
             
             # Log raw Alpha Vantage data
             if overview:
@@ -360,27 +374,47 @@ Remember to:
             if stock:
                 self._log_raw_data(stock, "alpha_vantage", "stock")
             
-            # If Alpha Vantage fails, try SEC data
+            # Get SEC data regardless of Alpha Vantage success, to supplement information
             sec_data = None
-            if not overview or not income or not balance:
-                logger.info("Alpha Vantage data incomplete, trying SEC data")
-                try:
-                    sec_data = await self.sec.get_company_facts(ticker)
-                    if sec_data:
-                        logger.info("Successfully retrieved SEC data")
-                        self._log_raw_data(sec_data, "sec", "company_facts")
-                except Exception as e:
-                    logger.error(f"Failed to get SEC data: {str(e)}")
+            insider_trading = None
+            try:
+                logger.info(f"Fetching SEC data for {ticker}")
+                sec_data = await self.sec.get_company_facts(ticker)
+                if sec_data:
+                    logger.info("Successfully retrieved SEC company facts")
+                    self._log_raw_data(sec_data, "sec", "company_facts")
+                    
+                # Also get insider trading data which can be useful
+                insider_trading = await self.sec.get_insider_trading(ticker)
+                if insider_trading:
+                    logger.info("Successfully retrieved SEC insider trading data")
+                    self._log_raw_data(insider_trading, "sec", "insider_trading")
+            except Exception as e:
+                logger.error(f"Failed to get SEC data: {str(e)}")
             
-            # Get news data
+            # Get news data - this should always work even if other APIs fail
             news_articles = []
-            if company_name:
+            if company_name or ticker:
                 try:
-                    news_articles = await self.news.search_company_news(company_name, ticker)
+                    search_term = company_name or ticker
+                    logger.info(f"Searching news for {search_term}")
+                    news_articles = await self.news.search_company_news(search_term, ticker)
                     if news_articles:
-                        self._log_raw_data(news_articles, "tavily", "news")
+                        logger.info(f"Found {len(news_articles)} news articles")
+                        self._log_raw_data(news_articles, "news", "news")
                 except Exception as e:
                     logger.error(f"Failed to get news data: {str(e)}")
+                    
+                # If we still don't have news, try financial metrics search as fallback
+                if not news_articles:
+                    try:
+                        logger.info(f"Trying financial metrics search for {search_term}")
+                        financial_data = await self.news.search_financial_metrics(search_term)
+                        if financial_data:
+                            news_articles = [{"title": "Financial Metrics", "url": "", "summary": json.dumps(financial_data)}]
+                            self._log_raw_data(financial_data, "news", "financial_metrics")
+                    except Exception as e:
+                        logger.error(f"Failed to get financial metrics: {str(e)}")
             
             # Process all available data
             company_profile = self._process_company_profile(overview, sec_data)
@@ -389,7 +423,8 @@ Remember to:
             stock_data = self._process_stock_data(stock) if stock else None
             news_data = NewsData(articles=news_articles) if news_articles else None
             
-            if not any([company_profile, financial_metrics, balance_sheet, stock_data, news_data]):
+            # Ensure we have some data from all sources combined
+            if not company_profile and not financial_metrics and not balance_sheet and not stock_data and not news_data:
                 error_msg = "Failed to retrieve any valid data from available sources"
                 logger.error(error_msg)
                 return ResearchResults(
@@ -398,8 +433,25 @@ Remember to:
                     financial_metrics=None,
                     balance_sheet=None,
                     stock_data=None,
-                    news_data=None,
+                    news_data=news_data,  # Still include news if available
                     error=error_msg
+                )
+            
+            # Create company profile with minimal data if not available
+            if not company_profile and (company_name or ticker):
+                company_profile = CompanyProfile(
+                    name=company_name,
+                    ticker=ticker,
+                    description="No detailed company information available",
+                    sector="",
+                    industry="",
+                    exchange="",
+                    market_cap=0,
+                    pe_ratio=0,
+                    peg_ratio=0,
+                    beta=0,
+                    profit_margin=0,
+                    revenue_growth=0
                 )
             
             logger.info("Successfully processed research data")

@@ -78,6 +78,34 @@ class LLMHelper:
         Returns:
             List of sub-questions with company info
         """
+        # For simple queries about a single company, create a direct mapping
+        # Check for common patterns like "analyze [company]'s [metrics]" or "[company] [metrics]"
+        company_patterns = [
+            r"(?:analyze|research|examine|study|investigate)\s+([A-Za-z0-9\s]+?)'s",
+            r"(?:analyze|research|examine|study|investigate)\s+([A-Za-z0-9\s]+)\s+(?:revenue|profit|growth|stock|share|performance)",
+            r"([A-Za-z0-9\s]+)'s\s+(?:revenue|profit|growth|stock|share|performance)",
+            r"([A-Za-z0-9\s]+)\s+(?:revenue|profit|growth|stock|share|performance)",
+        ]
+        
+        for pattern in company_patterns:
+            match = re.search(pattern, question)
+            if match:
+                company_name = match.group(1).strip()
+                logger.info(f"Extracted company name from question: {company_name}")
+                
+                # Get ticker if available
+                company_info = await self.extract_company_info(company_name)
+                ticker = company_info.get("ticker", "")
+                
+                # If company name is recognized, create direct sub-questions
+                return [
+                    {"question": f"What is {company_name}'s revenue growth?", "company_name": company_name, "ticker": ticker},
+                    {"question": f"What are {company_name}'s profit margins?", "company_name": company_name, "ticker": ticker},
+                    {"question": f"What is {company_name}'s recent financial performance?", "company_name": company_name, "ticker": ticker},
+                    {"question": f"What are the latest news about {company_name}?", "company_name": company_name, "ticker": ticker}
+                ]
+                
+        # For more complex questions, use LLM to break down
         system_prompt = """You are a financial research assistant. Break down the given question into specific sub-questions that can be researched individually. Focus on key metrics like revenue growth, profit margins, and stock performance. For each sub-question, identify the company being asked about.
 
 CRITICAL: Your response must contain ONLY a valid JSON array of questions, with no additional text or explanations. Each question must be a dictionary with 'question', 'company_name', and 'ticker' fields."""
