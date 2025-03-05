@@ -8,16 +8,17 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
 DB_DIR = os.path.join(DATA_DIR, "db")
 CACHE_DIR = os.path.join(DATA_DIR, "cache")
+CHROMA_DIR = os.path.join(DB_DIR, "chroma")
 
 # Create directories if they don't exist
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(DB_DIR, exist_ok=True)
 os.makedirs(CACHE_DIR, exist_ok=True)
+os.makedirs(CHROMA_DIR, exist_ok=True)
 
 # ChromaDB settings
-CHROMA_DB_PATH = os.path.join(DB_DIR, "chroma.db")
 CHROMA_SETTINGS = {
-    "persist_directory": CHROMA_DB_PATH,
+    "persist_directory": str(CHROMA_DIR),  # Convert Path to string
     "anonymized_telemetry": False
 }
 

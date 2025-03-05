@@ -1,9 +1,11 @@
+"""Tool for interacting with Alpha Vantage API"""
 import os
 import json
 import requests
 from bs4 import BeautifulSoup
 import chromadb
 from chromadb.config import Settings
+from chromadb.errors import InvalidCollectionException
 from typing import Dict, List, Optional, Union, Tuple, Any
 from dataclasses import dataclass
 import logging
@@ -38,21 +40,47 @@ class AlphaVantageTool:
         self.api_key = api_key
         self.base_url = "https://www.alphavantage.co/query"
         self.docs_url = "https://www.alphavantage.co/documentation/"
+        self.collection_name = collection_name
+        self.cache = Cache("alpha_vantage")  # Initialize cache first
         
-        # Initialize ChromaDB with persistent storage
-        self.client = chromadb.Client(Settings(
-            persist_directory=CHROMA_SETTINGS["persist_directory"],
-            anonymized_telemetry=CHROMA_SETTINGS["anonymized_telemetry"]
-        ))
-        self.collection = self.client.get_or_create_collection(collection_name)
+        logger.info(f"Initializing ChromaDB with persist_directory: {CHROMA_SETTINGS['persist_directory']}")
         
-        # Initialize cache
-        self.cache = Cache("alpha_vantage")
-        
-        # Check if we need to initialize the embeddings
-        if self.collection.count() == 0:
-            logger.info("No endpoints found in database. Scraping documentation...")
-            self.scrape_documentation()
+        try:
+            # Initialize ChromaDB with persistent storage
+            logger.info("Creating ChromaDB client...")
+            self.client = chromadb.PersistentClient(
+                path=CHROMA_SETTINGS["persist_directory"]
+            )
+            logger.info("ChromaDB client created successfully")
+            
+            # Try to get existing collection or create new one
+            try:
+                logger.info(f"Attempting to get collection '{collection_name}'...")
+                self.collection = self.client.get_collection(name=collection_name)
+                count = self.collection.count()
+                logger.info(f"Found existing collection '{collection_name}' with {count} documents")
+            except (ValueError, InvalidCollectionException):
+                logger.info(f"Collection not found. Creating new collection '{collection_name}'...")
+                self.collection = self.client.create_collection(
+                    name=collection_name,
+                    metadata={"hnsw:space": "cosine"}
+                )
+                logger.info("Collection created successfully")
+            
+            # Initialize embeddings if collection is empty
+            count = self.collection.count()
+            logger.info(f"Checking collection count: {count}")
+            if count == 0:
+                logger.info("No endpoints found in database. Starting documentation scraping...")
+                endpoints = self.scrape_documentation()
+                logger.info(f"Documentation scraped successfully. Found {len(endpoints)} endpoints")
+                logger.info("Creating embeddings...")
+                self.embed_documentation(endpoints)
+                logger.info("Embeddings created successfully")
+                
+        except Exception as e:
+            logger.error(f"Failed to initialize ChromaDB: {str(e)}", exc_info=True)
+            raise
     
     def _get_cache_key(self, function: str, params: Dict[str, Any]) -> str:
         """Generate a cache key for an API call
@@ -171,6 +199,9 @@ class AlphaVantageTool:
         
         Args:
             use_saved_html: Whether to use a locally saved HTML file instead of fetching from the web
+            
+        Returns:
+            List of API endpoints
         """
         logger.info("Scraping Alpha Vantage documentation...")
         
@@ -196,114 +227,71 @@ class AlphaVantageTool:
             # Find all API endpoints (h4 tags)
             endpoints = []
             for endpoint_header in main_content.find_all("h4"):
-                # Skip if this is not an API endpoint (e.g., if it's a subsection header)
+                # Skip if this is not an API endpoint
                 header_text = endpoint_header.get_text(strip=True)
                 if not header_text or "API Parameters" in header_text or "Examples" in header_text:
                     continue
                 
-                # Get the function name (first word, removing any labels)
-                function_name = header_text.split()[0].strip()
-                # Remove any labels like "Trending" or "Premium"
-                function_name = re.sub(r'(Trending|Premium)$', '', function_name)
-                
-                # Get the description (p tag after h4)
+                # Get the description (next p tag)
                 description = ""
                 next_elem = endpoint_header.find_next_sibling()
-                while next_elem and next_elem.name == "br":
+                while next_elem and next_elem.name == "p":
+                    description += " " + next_elem.get_text(strip=True)
                     next_elem = next_elem.find_next_sibling()
-                if next_elem and next_elem.name == "p":
-                    description = next_elem.get_text(strip=True)
                 
-                # Get the endpoint URL from example section
-                endpoint_url = ""
-                example_section = None
+                # Find the parameters table
+                params_table = None
                 current = endpoint_header
-                while current:
+                while current and not params_table:
                     current = current.find_next_sibling()
-                    if current and current.name == "h4":
-                        break
-                    if current and current.name == "h6" and "Examples" in current.get_text():
-                        example_section = current
-                        break
+                    if current and current.name == "table":
+                        params_table = current
                 
-                if example_section:
-                    # Find the first code block after the Examples header
-                    code_block = example_section.find_next("code")
-                    if code_block:
-                        text = code_block.get_text(strip=True)
-                        if "query?function=" in text:
-                            endpoint_url = text
-                
-                # Extract parameters
+                # Extract parameters from table
                 required_params = {}
                 optional_params = {}
+                if params_table:
+                    for row in params_table.find_all("tr")[1:]:  # Skip header row
+                        cols = row.find_all("td")
+                        if len(cols) >= 2:
+                            param_name = cols[0].get_text(strip=True)
+                            param_desc = self._clean_description(cols[1].get_text())
+                            
+                            # Check if parameter is required (contains "required" in description)
+                            if "required" in param_desc.lower():
+                                required_params[param_name] = param_desc
+                            else:
+                                optional_params[param_name] = param_desc
                 
-                # Find parameter section
-                param_section = None
-                current = endpoint_header
+                # Find example response
+                example_response = None
+                example_header = None
+                current = params_table if params_table else endpoint_header
                 while current:
                     current = current.find_next_sibling()
-                    if not current or current.name == "h4" or (current.name == "h6" and "Examples" in current.get_text()):
-                        break
-                    
-                    if current and current.name == "h6" and "API Parameters" in current.get_text():
-                        param_section = current
+                    if current and current.name == "h5" and "Example" in current.get_text():
+                        example_header = current
                         break
                 
-                if param_section:
-                    # Process parameters
-                    current = param_section
-                    while current:
-                        current = current.find_next_sibling()
-                        if not current or current.name == "h4" or (current.name == "h6" and "Examples" in current.get_text()):
-                            break
-                        
-                        if current.name == "p":
-                            text = current.get_text(strip=True)
-                            if text.startswith("❚"):
-                                # This is a parameter definition
-                                is_required = "Required:" in text
-                                param_name = None
-                                code_tag = current.find("code")
-                                if code_tag:
-                                    param_name = code_tag.get_text(strip=True)
-                                
-                                # Get the description from the next p tag
-                                desc_tag = current.find_next_sibling("p")
-                                if desc_tag and param_name:
-                                    param_desc = desc_tag.get_text(strip=True)
-                                    if is_required:
-                                        required_params[param_name] = param_desc
-                                    else:
-                                        optional_params[param_name] = param_desc
+                if example_header:
+                    example_pre = example_header.find_next_sibling("pre")
+                    if example_pre:
+                        example_response = example_pre.get_text(strip=True)
                 
-                # Get example response from the code blocks
-                example_response = None
-                code_blocks = endpoint_header.find_next("div", class_="python-code")
-                if code_blocks:
-                    code = code_blocks.find("code")
-                    if code:
-                        text = code.get_text(strip=True)
-                        if "{" in text and "}" in text:
-                            try:
-                                # Clean up the text to make it valid JSON
-                                cleaned_text = re.sub(r'([{,])\s*([a-zA-Z_]+):', r'\1"\2":', text)
-                                json.loads(cleaned_text)
-                                example_response = cleaned_text
-                            except json.JSONDecodeError:
-                                pass
+                # Extract function name from the API endpoint
+                function_name = header_text.split("(")[0].strip()
                 
-                if function_name and endpoint_url:  # Only add if we have the essential information
-                    endpoint = APIEndpoint(
-                        name=function_name,
-                        description=description,
-                        endpoint=endpoint_url,
-                        function=function_name,
-                        required_params=required_params,
-                        optional_params=optional_params,
-                        example_response=example_response
-                    )
-                    endpoints.append(endpoint)
+                # Create endpoint object
+                endpoint = APIEndpoint(
+                    name=header_text,
+                    description=description.strip(),
+                    endpoint=self.base_url,
+                    function=function_name,
+                    required_params=required_params,
+                    optional_params=optional_params,
+                    example_response=example_response
+                )
+                endpoints.append(endpoint)
             
             logger.info(f"Found {len(endpoints)} API endpoints")
             return endpoints
@@ -328,12 +316,6 @@ class AlphaVantageTool:
             endpoints: List of API endpoints to embed
         """
         logger.info("Creating embeddings for API documentation...")
-        
-        # Create a new collection for the embeddings
-        self.collection = self.client.create_collection(
-            name="alpha_vantage_docs",
-            metadata={"hnsw:space": "cosine"}
-        )
         
         # Prepare the documents and metadata
         documents = []
@@ -409,7 +391,7 @@ class AlphaVantageTool:
         
         return endpoints
     
-    def call_endpoint(self, function: str, **params) -> Dict:
+    def call_endpoint(self, function: str, **params) -> Dict[str, Any]:
         """Make an API call to Alpha Vantage
         
         Args:
