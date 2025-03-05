@@ -53,6 +53,10 @@ SEC_API_KEY=your_sec_api_key
 
 ## Usage
 
+```python
+python run_ui.py
+```
+
 ### Example: Financial Research
 
 ```python
