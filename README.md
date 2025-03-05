@@ -48,6 +48,7 @@ pip install -r requirements.txt
 ALPHA_VANTAGE_API_KEY=your_api_key_here
 OPENAI_API_KEY=your_openai_key_here
 TAVILY_API_KEY=your_tavily_key_here
+SEC_API_KEY=your_sec_api_key
 ```
 
 ## Usage
