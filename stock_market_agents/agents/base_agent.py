@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class BaseAgent(ABC):
-    """Base class for ReAct agents using ChatGPT"""
+    """Base class for ReAct agents using OpenAI API"""
     
     def __init__(self, model: str = "gpt-4"):
         """Initialize the base agent

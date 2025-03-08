@@ -1,15 +1,12 @@
 """ResearcherAgent for gathering financial information"""
 import asyncio
 import logging
-import time
 import json
 from typing import List, Dict, Any, Optional
-from datetime import datetime
 import pandas as pd
 
-from ..tools.alpha_vantage import AlphaVantageTool
-from ..tools.sec import SECTool
 from ..tools.news import WebSearchTool
+from ..tools.financial_datasets import FinancialDatasets
 from ..utils.llm import LLMHelper
 from ..models.research import (
     CompanyProfile, FinancialMetrics, StockData, 
@@ -25,8 +22,7 @@ class ResearcherAgent(BaseAgent):
     def __init__(self):
         """Initialize the researcher agent"""
         super().__init__()
-        self.alpha_vantage = AlphaVantageTool()
-        self.sec = SECTool()
+        self.financial_datasets = FinancialDatasets()
         self.news = WebSearchTool()
         self.llm = LLMHelper()
         self.rate_limit_delay = 60  # Delay in seconds when rate limited
