@@ -53,34 +53,6 @@ Remember to:
 - Include metadata about data freshness
 """
     
-    async def _call_with_retry(self, endpoint: str, **kwargs) -> Optional[Dict[str, Any]]:
-        """Call an Alpha Vantage endpoint with retry logic.
-        
-        Args:
-            endpoint: Endpoint to call
-            **kwargs: Additional arguments for the endpoint
-            
-        Returns:
-            Response data or None if all retries fail
-        """
-        for attempt in range(self.max_retries):
-            try:
-                data = self.alpha_vantage.call_endpoint(endpoint, **kwargs)
-                if data and "Note" not in data:  # "Note" indicates rate limit
-                    return data
-                    
-                # If rate limited, wait and retry
-                logger.warning(f"Rate limited on attempt {attempt + 1}, waiting {self.rate_limit_delay}s")
-                await asyncio.sleep(self.rate_limit_delay)
-                self.rate_limit_delay *= 2  # Exponential backoff
-                
-            except Exception as e:
-                logger.error(f"API call failed on attempt {attempt + 1}: {str(e)}")
-                if attempt < self.max_retries - 1:
-                    await asyncio.sleep(1)  # Brief delay between retries
-                    
-        return None
-    
     def _get_available_tools(self) -> List[Dict[str, str]]:
         """Get list of available tools for this agent
         
@@ -743,42 +715,6 @@ Remember to:
         except Exception as e:
             logger.error(f"Failed to extract economic indicators: {str(e)}")
         return indicators
-        
-    def _update_company_profile(self, profile: CompanyProfile, additional_metrics: Dict[str, float]) -> CompanyProfile:
-        """Update company profile with additional metrics.
-        
-        Args:
-            profile: Existing company profile
-            additional_metrics: Additional metrics to add
-            
-        Returns:
-            Updated company profile
-        """
-        try:
-            # Map additional metrics to profile fields
-            metric_mapping = {
-                "RSI": "rsi",
-                "MACD": "macd",
-                "Beta": "beta",
-                "PEG Ratio": "peg_ratio",
-                "Dividend Yield": "dividend_yield",
-                "Return on Equity": "roe",
-                "Return on Assets": "roa",
-                "Debt to Equity": "debt_to_equity",
-                "Current Ratio": "current_ratio",
-                "Quick Ratio": "quick_ratio"
-            }
-            
-            # Update profile with available metrics
-            for metric, value in additional_metrics.items():
-                if metric in metric_mapping:
-                    setattr(profile, metric_mapping[metric], value)
-                    
-            return profile
-            
-        except Exception as e:
-            logger.error(f"Failed to update company profile: {str(e)}")
-            return profile
 
     async def research_concurrent(self, sub_questions: List[Dict[str, str]]) -> List[ResearchResults]:
         """Research multiple questions concurrently.
@@ -802,22 +738,3 @@ Remember to:
         
         logger.info("Completed all research tasks")
         return results
-    
-    async def research_multiple(self, questions: List[Dict[str, str]]) -> List[ResearchResults]:
-        """Research multiple questions concurrently
-        
-        Args:
-            questions: List of questions to research
-            
-        Returns:
-            List of research results
-        """
-        logger.info(f"Starting concurrent research for {len(questions)} questions")
-        tasks = [self.research_question(q) for q in questions]
-        try:
-            results = await asyncio.gather(*tasks)
-            logger.info("Completed all research tasks")
-            return results
-        except Exception as e:
-            logger.error(f"Concurrent research failed: {str(e)}", exc_info=True)
-            raise
