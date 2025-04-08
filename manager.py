@@ -14,6 +14,7 @@ from financial_agents.risk_agent import risk_agent
 from financial_agents.search_agent import search_agent
 from financial_agents.verifier_agent import VerificationResult, verifier_agent
 from financial_agents.writer_agent import FinancialReportData, writer_agent
+from financial_agents.financial_data_agent import financial_data_agent, FinancialDataAnalysis
 from printer import Printer
 
 
@@ -43,9 +44,18 @@ class FinancialResearchManager:
                 hide_checkmark=True,
             )
             self.printer.update_item("start", "Starting financial research...", is_done=True)
+            
+            # Extract company/ticker from query for financial data retrieval
+            company_info = await self._extract_company_info(query)
+            
+            # Get financial data using the new agent
+            financial_data = await self._get_financial_data(company_info)
+            
             search_plan = await self._plan_searches(query)
             search_results = await self._perform_searches(search_plan)
-            report = await self._write_report(query, search_results)
+            
+            # Include financial data in report writing
+            report = await self._write_report(query, search_results, financial_data)
             verification = await self._verify_report(report)
 
             final_report = f"Report summary\n\n{report.short_summary}"
@@ -60,6 +70,52 @@ class FinancialResearchManager:
         print("\n".join(report.follow_up_questions))
         print("\n\n=====VERIFICATION=====\n\n")
         print(verification)
+
+    async def _extract_company_info(self, query: str) -> str:
+        """Extract company name or ticker from the query."""
+        self.printer.update_item("extracting_company", "Identifying company/ticker from query...")
+        
+        # Use a simple approach to extract potential company or ticker from the query
+        words = query.split()
+        company_info = query
+        
+        self.printer.update_item(
+            "extracting_company", 
+            f"Identified company/ticker from query", 
+            is_done=True
+        )
+        
+        return company_info
+
+    async def _get_financial_data(self, company_info: str) -> FinancialDataAnalysis:
+        """Retrieve financial data using the financial data agent."""
+        self.printer.update_item("financial_data", "Retrieving and analyzing financial data...")
+        
+        try:
+            result = await Runner.run(financial_data_agent, f"Company/Ticker: {company_info}")
+            financial_data = result.final_output_as(FinancialDataAnalysis)
+            
+            self.printer.update_item(
+                "financial_data",
+                f"Retrieved financial data for {financial_data.company_name} ({financial_data.ticker})",
+                is_done=True,
+            )
+            
+            return financial_data
+        except Exception as e:
+            self.printer.update_item(
+                "financial_data",
+                f"Error retrieving financial data: {str(e)}",
+                is_done=True,
+            )
+            # Return an empty financial data object if retrieval fails
+            return FinancialDataAnalysis(
+                ticker="",
+                company_name="",
+                financial_summary="Failed to retrieve financial data.",
+                key_metrics=[],
+                growth_analysis="",
+            )
 
     async def _plan_searches(self, query: str) -> FinancialSearchPlan:
         self.printer.update_item("planning", "Planning searches...")
@@ -96,7 +152,7 @@ class FinancialResearchManager:
         except Exception:
             return None
 
-    async def _write_report(self, query: str, search_results: Sequence[str]) -> FinancialReportData:
+    async def _write_report(self, query: str, search_results: Sequence[str], financial_data: FinancialDataAnalysis) -> FinancialReportData:
         # Expose the specialist analysts as tools so the writer can invoke them inline
         # and still produce the final FinancialReportData output.
         fundamentals_tool = financials_agent.as_tool(
@@ -111,7 +167,25 @@ class FinancialResearchManager:
         )
         writer_with_tools = writer_agent.clone(tools=[fundamentals_tool, risk_tool])
         self.printer.update_item("writing", "Thinking about report...")
-        input_data = f"Original query: {query}\nSummarized search results: {search_results}"
+        
+        # Include financial data in the input to the writer agent
+        financial_data_str = (
+            f"Financial Data Analysis:\n"
+            f"Ticker: {financial_data.ticker}\n"
+            f"Company: {financial_data.company_name}\n"
+            f"Summary: {financial_data.financial_summary}\n"
+            f"Key Metrics: {', '.join(financial_data.key_metrics)}\n"
+            f"Growth: {financial_data.growth_analysis}\n"
+        )
+        if financial_data.risk_factors:
+            financial_data_str += f"Risk Factors: {', '.join(financial_data.risk_factors)}\n"
+        
+        input_data = (
+            f"Original query: {query}\n"
+            f"Summarized search results: {search_results}\n"
+            f"Financial Data: {financial_data_str}"
+        )
+        
         result = Runner.run_streamed(writer_with_tools, input_data)
         update_messages = [
             "Planning report structure...",
