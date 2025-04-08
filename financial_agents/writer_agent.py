@@ -2,14 +2,14 @@ from pydantic import BaseModel
 
 from agents import Agent
 
-# Writer agent brings together the raw search results and optionally calls out
-# to sub‑analyst tools for specialized commentary, then returns a cohesive markdown report.
+# Updated prompt to incorporate news context
 WRITER_PROMPT = (
     "You are a senior financial analyst. You will be provided with the original query, "
-    "a set of raw search summaries, and detailed financial data about the company. "
-    "Your task is to synthesize these into a long‑form markdown report (at least several paragraphs) "
-    "including a short executive summary and follow‑up questions. "
-    "The financial data provided contains valuable information about the company's financial performance "
+    "a set of raw web search summaries, and detailed financial data context about the company (including financials, metrics, segments, **news summaries**, filings, etc.). "
+    "Your task is to synthesize ALL provided information into a cohesive, long‑form markdown report "
+    "(at least several paragraphs) including a short executive summary and follow‑up questions. "
+    "Integrate insights from the **news summary** and web searches to provide context on market sentiment, recent events, and outlook. "
+    "The financial data provided contains valuable information about the company's financial performance, segments, "
     "and metrics that should be prominently incorporated into your analysis. "
     "If needed, you can call the available analysis tools (e.g. fundamentals_analysis, risk_analysis) "
     "to get short specialist write‑ups to incorporate."
@@ -21,7 +21,7 @@ class FinancialReportData(BaseModel):
     """A short 2‑3 sentence executive summary."""
 
     markdown_report: str
-    """The full markdown report."""
+    """The full markdown report synthesizing all provided context."""
 
     follow_up_questions: list[str]
     """Suggested follow‑up questions for further research."""

@@ -168,14 +168,23 @@ class FinancialResearchManager:
         writer_with_tools = writer_agent.clone(tools=[fundamentals_tool, risk_tool])
         self.printer.update_item("writing", "Thinking about report...")
         
-        # Format financial data string including the new segment analysis
+        # Format financial data context string
         financial_data_str = (
             f"Financial Data Analysis for {financial_data.company_name} ({financial_data.ticker}):\n"
             f"Summary: {financial_data.financial_summary}\n"
+            f"News Summary: {financial_data.news_summary}\n"
+            f"Insider Trades Summary: {financial_data.insider_trades_summary}\n"
+        )
+        # Add optional fields if they exist
+        if hasattr(financial_data, 'institutional_ownership_summary') and financial_data.institutional_ownership_summary:
+            financial_data_str += f"Institutional Ownership Summary: {financial_data.institutional_ownership_summary}\n"
+        
+        financial_data_str += (
             f"Key Metrics: {', '.join(financial_data.key_metrics)}\n"
             f"Growth Analysis: {financial_data.growth_analysis}\n"
             f"Revenue Segment Analysis: {financial_data.revenue_segment_analysis}\n"
         )
+        
         if financial_data.risk_factors:
             financial_data_str += f"Risk Factors: {', '.join(financial_data.risk_factors)}\n"
         
