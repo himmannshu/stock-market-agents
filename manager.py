@@ -168,22 +168,21 @@ class FinancialResearchManager:
         writer_with_tools = writer_agent.clone(tools=[fundamentals_tool, risk_tool])
         self.printer.update_item("writing", "Thinking about report...")
         
-        # Include financial data in the input to the writer agent
+        # Format financial data string including the new segment analysis
         financial_data_str = (
-            f"Financial Data Analysis:\n"
-            f"Ticker: {financial_data.ticker}\n"
-            f"Company: {financial_data.company_name}\n"
+            f"Financial Data Analysis for {financial_data.company_name} ({financial_data.ticker}):\n"
             f"Summary: {financial_data.financial_summary}\n"
             f"Key Metrics: {', '.join(financial_data.key_metrics)}\n"
-            f"Growth: {financial_data.growth_analysis}\n"
+            f"Growth Analysis: {financial_data.growth_analysis}\n"
+            f"Revenue Segment Analysis: {financial_data.revenue_segment_analysis}\n"
         )
         if financial_data.risk_factors:
             financial_data_str += f"Risk Factors: {', '.join(financial_data.risk_factors)}\n"
         
         input_data = (
             f"Original query: {query}\n"
-            f"Summarized search results: {search_results}\n"
-            f"Financial Data: {financial_data_str}"
+            f"Summarized web search results: {search_results}\n"
+            f"Financial Data Context: \n{financial_data_str}"
         )
         
         result = Runner.run_streamed(writer_with_tools, input_data)

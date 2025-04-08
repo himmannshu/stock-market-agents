@@ -48,6 +48,11 @@ def _get_press_releases(ticker: str, limit: int = 1) -> Dict[str, Any]:
     url = f"{BASE_URL}/earnings/press-releases?ticker={ticker}&limit={limit}"
     return _make_request(url)
 
+def _get_segmented_revenues(ticker: str, period: str = "annual", limit: int = 1) -> Dict[str, Any]:
+    """Get segmented revenue data."""
+    url = f"{BASE_URL}/financials/segmented-revenues?ticker={ticker}&period={period}&limit={limit}"
+    return _make_request(url)
+
 def _format_financial_data(data: Dict[str, Any], ticker: str) -> str:
     """Format the retrieved financial data into a readable Markdown summary."""
     summary = f"## Financial Data Summary for {ticker}\n\n"
@@ -123,6 +128,60 @@ def _format_financial_data(data: Dict[str, Any], ticker: str) -> str:
         else:
              summary += "### Latest Cash Flow Statement\nNot Available\n\n"
              
+    segmented_revenues_data = data.get("segmented_revenues")
+    if segmented_revenues_data:
+        segments_list = segmented_revenues_data.get("segmented_revenues", [])
+        if segments_list:
+            latest_segment_report = segments_list[0]
+            period_label = f"{latest_segment_report.get('period', 'N/A')} {latest_segment_report.get('report_period', 'N/A')}"
+            summary += f"### Segmented Revenues ({period_label})\n"
+            
+            product_segments = {}
+            geo_segments = {}
+            other_segments = {}
+
+            for item in latest_segment_report.get("items", []):
+                amount = item.get('amount', 0)
+                # Assuming one segment label per item for simplicity in this summary
+                segment_info = item.get("segments", [{}])[0]
+                label = segment_info.get("label", "Unknown Segment")
+                seg_type = segment_info.get("type", "Unknown Type")
+                
+                # Group by common segment types
+                if "Product" in seg_type or "Service" in seg_type:
+                    product_segments[label] = amount
+                elif "Geographic" in seg_type or "Region" in seg_type or "Countr" in seg_type or "Segment" in seg_type: # Heuristic for geo
+                    geo_segments[label] = amount
+                else:
+                    other_segments[label] = amount
+            
+            if product_segments:
+                summary += "**By Product/Service:**\n"
+                summary += "| Segment        | Revenue       |\n"
+                summary += "|----------------|---------------|\n"
+                for label, amount in product_segments.items():
+                    summary += f"| {label:<14} | {amount:<13} |\n" 
+                summary += "\n"
+            
+            if geo_segments:
+                summary += "**By Geography/Segment:**\n"
+                summary += "| Segment        | Revenue       |\n"
+                summary += "|----------------|---------------|\n"
+                for label, amount in geo_segments.items():
+                     summary += f"| {label:<14} | {amount:<13} |\n"
+                summary += "\n"
+            
+            if other_segments:
+                summary += "**By Other Segments:**\n"
+                summary += "| Segment        | Revenue       |\n"
+                summary += "|----------------|---------------|\n"
+                for label, amount in other_segments.items():
+                     summary += f"| {label:<14} | {amount:<13} |\n"
+                summary += "\n"
+
+        else:
+            summary += "### Segmented Revenues\nNot Available\n\n"
+             
     prices_data = data.get("prices")
     if prices_data:
         prices = prices_data.get("prices", [])
@@ -150,32 +209,41 @@ def _format_financial_data(data: Dict[str, Any], ticker: str) -> str:
 
 
 @function_tool
-async def financial_data_search(ticker: str, data_type: str, metrics_period: Optional[str] = None, metrics_limit: Optional[int] = None) -> str:
+async def financial_data_search(ticker: str, 
+                                data_type: str, 
+                                metrics_period: Optional[str] = None, 
+                                metrics_limit: Optional[int] = None,
+                                segmented_period: Optional[str] = None,
+                                segmented_limit: Optional[int] = None) -> str:
     """
     Search for financial data about a company using Financial Datasets API.
     Retrieves company info, historical key metrics, latest annual statements (income, balance, cash flow), 
-    recent price, and latest earnings press release.
+    segmented revenues, recent price, and latest earnings press release.
     
     Args:
         ticker: The stock ticker symbol (e.g., AAPL, MSFT, GOOGL). Should be uppercase.
-        data_type: Type of data to retrieve (must be one of 'income', 'balance', 'cash-flow', 'metrics', 'prices', 'info', 'press-releases', or 'all').
+        data_type: Type of data to retrieve (must be one of 'income', 'balance', 'cash-flow', 'metrics', 'prices', 'info', 'press-releases', 'segmented-revenues', or 'all').
         metrics_period: Optional period for historical metrics ('annual' or 'quarterly'). Defaults to 'annual' if metrics are requested.
         metrics_limit: Optional limit for number of historical metrics periods. Defaults to 3 if metrics are requested.
+        segmented_period: Optional period for segmented revenues ('annual' or 'quarterly'). Defaults to 'annual' if segmented revenues are requested.
+        segmented_limit: Optional limit for number of segmented revenue periods. Defaults to 1 if segmented revenues are requested.
         
     Returns:
         Formatted summary of the financial data or an error message.
     """
     try:
         result = {}
-        ticker = ticker.upper() # Ensure ticker is uppercase as API might be sensitive
+        ticker = ticker.upper() 
         
-        valid_data_types = ["income", "balance", "cash-flow", "metrics", "prices", "info", "press-releases", "all"]
+        valid_data_types = ["income", "balance", "cash-flow", "metrics", "prices", "info", "press-releases", "segmented-revenues", "all"]
         if data_type not in valid_data_types:
             return f"Error: Invalid data_type '{data_type}'. Must be one of {valid_data_types}"
             
         valid_periods = ["annual", "quarterly"]
         if metrics_period and metrics_period not in valid_periods:
              return f"Error: Invalid metrics_period '{metrics_period}'. Must be one of {valid_periods}"
+        if segmented_period and segmented_period not in valid_periods:
+             return f"Error: Invalid segmented_period '{segmented_period}'. Must be one of {valid_periods}"
 
         effective_data_type = data_type if data_type else "all"
 
@@ -183,13 +251,11 @@ async def financial_data_search(ticker: str, data_type: str, metrics_period: Opt
             result["company_info"] = _get_company_info(ticker)
             
         if effective_data_type in ["metrics", "all"]:
-            # Use provided period/limit or defaults
             period_to_use = metrics_period if metrics_period else "annual"
             limit_to_use = metrics_limit if metrics_limit else 3
             result["metrics"] = _get_company_metrics(ticker, period=period_to_use, limit=limit_to_use)
             
         if effective_data_type in ["income", "all"]:
-            # For now, keep statements to latest annual
             result["income_statements"] = _get_financial_statements(ticker, "income-statements", "annual", 1)
             
         if effective_data_type in ["balance", "all"]:
@@ -197,6 +263,11 @@ async def financial_data_search(ticker: str, data_type: str, metrics_period: Opt
             
         if effective_data_type in ["cash-flow", "all"]:
             result["cash_flow_statements"] = _get_financial_statements(ticker, "cash-flow-statements", "annual", 1)
+
+        if effective_data_type in ["segmented-revenues", "all"]:
+            period_to_use = segmented_period if segmented_period else "annual"
+            limit_to_use = segmented_limit if segmented_limit else 1
+            result["segmented_revenues"] = _get_segmented_revenues(ticker, period=period_to_use, limit=limit_to_use)
             
         if effective_data_type in ["prices", "all"]:
             result["prices"] = _get_stock_prices(ticker, limit=1)
