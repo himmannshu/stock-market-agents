@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import Sequence
+from typing import Any, Dict
 
 from rich.console import Console
 
@@ -34,7 +35,8 @@ class FinancialResearchManager:
         self.console = Console()
         self.printer = Printer(self.console)
 
-    async def run(self, query: str) -> None:
+    async def run(self, query: str) -> Dict[str, Any]:
+        """Runs the full research process and returns the results."""
         trace_id = gen_trace_id()
         with trace("Financial research trace", trace_id=trace_id):
             self.printer.update_item(
@@ -54,22 +56,28 @@ class FinancialResearchManager:
             search_plan = await self._plan_searches(query)
             search_results = await self._perform_searches(search_plan)
             
-            # Include financial data in report writing
-            report = await self._write_report(query, search_results, financial_data)
-            verification = await self._verify_report(report)
+            # Write the textual report (chart data handled separately)
+            report_data = await self._write_report(query, search_results, financial_data)
+            verification = await self._verify_report(report_data)
 
-            final_report = f"Report summary\n\n{report.short_summary}"
-            self.printer.update_item("final_report", final_report, is_done=True)
+            # Combine textual report with raw chart data for final output
+            final_markdown_report = report_data.markdown_report
+            if financial_data.raw_chart_data:
+                final_markdown_report += "\n\n" + financial_data.raw_chart_data
+
+            final_summary = f"Report summary\n\n{report_data.short_summary}"
+            self.printer.update_item("final_report", final_summary, is_done=True)
 
             self.printer.end()
 
-        # Print to stdout
-        print("\n\n=====REPORT=====\n\n")
-        print(f"Report:\n{report.markdown_report}")
-        print("\n\n=====FOLLOW UP QUESTIONS=====\n\n")
-        print("\n".join(report.follow_up_questions))
-        print("\n\n=====VERIFICATION=====\n\n")
-        print(verification)
+            # Return results instead of printing
+            return {
+                "markdown_report": final_markdown_report,
+                "follow_up_questions": report_data.follow_up_questions,
+                "verification_result": verification,
+                "short_summary": report_data.short_summary, # Include summary for potential display
+                "trace_id": trace_id, # Include trace_id for debugging
+            }
 
     async def _extract_company_info(self, query: str) -> str:
         """Extract company name or ticker from the query."""
@@ -107,14 +115,20 @@ class FinancialResearchManager:
                 "financial_data",
                 f"Error retrieving financial data: {str(e)}",
                 is_done=True,
+                is_error=True,
             )
             # Return an empty financial data object if retrieval fails
+            # Ensure all required fields have default values
             return FinancialDataAnalysis(
                 ticker="",
                 company_name="",
                 financial_summary="Failed to retrieve financial data.",
+                news_summary="",
+                insider_trades_summary="",
                 key_metrics=[],
                 growth_analysis="",
+                revenue_segment_analysis="",
+                raw_chart_data="", # Ensure this has a default
             )
 
     async def _plan_searches(self, query: str) -> FinancialSearchPlan:
@@ -152,9 +166,13 @@ class FinancialResearchManager:
         except Exception:
             return None
 
-    async def _write_report(self, query: str, search_results: Sequence[str], financial_data: FinancialDataAnalysis) -> FinancialReportData:
+    async def _write_report(
+        self,
+        query: str,
+        search_results: Sequence[str],
+        financial_data: FinancialDataAnalysis,
+    ) -> FinancialReportData:
         # Expose the specialist analysts as tools so the writer can invoke them inline
-        # and still produce the final FinancialReportData output.
         fundamentals_tool = financials_agent.as_tool(
             tool_name="fundamentals_analysis",
             tool_description="Use to get a short write‑up of key financial metrics",
@@ -166,34 +184,32 @@ class FinancialResearchManager:
             custom_output_extractor=_summary_extractor,
         )
         writer_with_tools = writer_agent.clone(tools=[fundamentals_tool, risk_tool])
-        self.printer.update_item("writing", "Thinking about report...")
-        
-        # Format financial data context string
-        financial_data_str = (
-            f"Financial Data Analysis for {financial_data.company_name} ({financial_data.ticker}):\n"
-            f"Summary: {financial_data.financial_summary}\n"
+        self.printer.update_item("writing", "Synthesizing report...")
+
+        # Format financial data context string - ONLY include textual analysis fields
+        financial_data_text_context = (
+            f"Financial Data Analysis Summary for {financial_data.company_name} ({financial_data.ticker}):\n"
+            f"Financial Summary: {financial_data.financial_summary}\n"
             f"News Summary: {financial_data.news_summary}\n"
             f"Insider Trades Summary: {financial_data.insider_trades_summary}\n"
         )
-        # Add optional fields if they exist
-        if hasattr(financial_data, 'institutional_ownership_summary') and financial_data.institutional_ownership_summary:
-            financial_data_str += f"Institutional Ownership Summary: {financial_data.institutional_ownership_summary}\n"
-        
-        financial_data_str += (
-            f"Key Metrics: {', '.join(financial_data.key_metrics)}\n"
+        if financial_data.institutional_ownership_summary:
+            financial_data_text_context += f"Institutional Ownership Summary: {financial_data.institutional_ownership_summary}\n"
+        financial_data_text_context += (
+            f"Key Metrics Summary: {', '.join(financial_data.key_metrics)}\n"
             f"Growth Analysis: {financial_data.growth_analysis}\n"
             f"Revenue Segment Analysis: {financial_data.revenue_segment_analysis}\n"
         )
-        
         if financial_data.risk_factors:
-            financial_data_str += f"Risk Factors: {', '.join(financial_data.risk_factors)}\n"
-        
+            financial_data_text_context += f"Risk Factors: {', '.join(financial_data.risk_factors)}\n"
+
+        # Input for the writer agent now only contains textual context
         input_data = (
             f"Original query: {query}\n"
             f"Summarized web search results: {search_results}\n"
-            f"Financial Data Context: \n{financial_data_str}"
+            f"Financial Data Context: \n{financial_data_text_context}"
         )
-        
+
         result = Runner.run_streamed(writer_with_tools, input_data)
         update_messages = [
             "Planning report structure...",
@@ -212,6 +228,7 @@ class FinancialResearchManager:
 
     async def _verify_report(self, report: FinancialReportData) -> VerificationResult:
         self.printer.update_item("verifying", "Verifying report...")
+        # Pass only the textual markdown report to the verifier
         result = await Runner.run(verifier_agent, report.markdown_report)
         self.printer.mark_item_done("verifying")
         return result.final_output_as(VerificationResult)

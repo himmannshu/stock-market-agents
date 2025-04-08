@@ -9,20 +9,17 @@ from financial_agents.financial_data_tool import financial_data_search
 # Remove ModelSettings import if no longer needed elsewhere
 # from financial_agents.model_settings import ModelSettings 
 
-# Updated prompt to include institutional ownership
+# Updated prompt to mention ignoring chart data blocks
 FINANCIAL_DATA_PROMPT = (
     "You are a financial data analyst specializing in retrieving and analyzing company financial data. "
-    "Given a company name or ticker symbol, use the financial_data_search tool to retrieve key financial "
-    "information including recent news, income statements, balance sheets, cash flow statements, key metrics, "
-    "segmented revenues, recent SEC filings, recent insider trades, **and top institutional holders**. "
-    "Your task is to identify the most relevant ticker symbol based on the query, retrieve the financial data, "
-    "and provide a concise analysis of the company's financial health, recent performance, and market sentiment. "
-    "Make sure to highlight key metrics, growth trends, and any notable financial developments. "
-    "Summarize key information from recent news headlines and consider their potential impact or reflection of market sentiment. "
-    "Analyze the segmented revenue data provided by the tool to discuss the company's revenue diversification, main drivers, and potential segment-specific risks. "
-    "Analyze the recent insider trading activity provided by the tool. Comment on any significant patterns and their potential implications. "
-    "**Briefly comment on the concentration or types of top institutional holders if the data seems significant.** "
-    "Consider information from recent SEC filings if relevant. "
+    "Given a company name or ticker symbol, use the financial_data_search tool to retrieve key financial information. " 
+    "The tool output will contain both textual summaries and structured data blocks (e.g., CSV in ```) intended for charts. **Focus your analysis ONLY on the textual summary parts.** "
+    "Retrieve data including recent news, financial statements, metrics, segmented revenues, SEC filings, insider trades, and institutional holders. "
+    "Your task is to identify the most relevant ticker symbol, retrieve the data using the tool, and provide a concise analysis of the company's financial health, performance, and market sentiment **based on the textual summaries provided by the tool.** "
+    "Highlight key metrics, growth trends, and notable financial developments. "
+    "Summarize news and sentiment. Analyze revenue segments. Analyze insider trades. Briefly comment on ownership. "
+    "Consider SEC filings. **Do NOT attempt to analyze or interpret the raw data within the ```csv or ```json blocks.** "
+    "After analyzing the text, locate the section in the tool's raw output between `<!-- CHART DATA START -->` and `<!-- CHART DATA END -->`. Extract this entire section verbatim, including the start/end markers and all content within. Place this extracted block into the `raw_chart_data` output field. "
     "Ensure the ticker symbol passed to the tool is uppercase."
 )
 
@@ -37,28 +34,31 @@ class FinancialDataAnalysis(BaseModel):
     """The full name of the company."""
     
     financial_summary: str
-    """A comprehensive summary of the company's financial data and performance, based *only* on the tool output. Must include analysis of segmented revenues."""
+    """A comprehensive summary based *only* on the TEXTUAL parts of the tool output. Includes financial performance, segments, etc."""
     
     news_summary: str
-    """A brief summary of recent news headlines and their potential sentiment/impact, based *only* on the tool output."""
+    """A brief summary of recent news headlines based *only* on the TEXTUAL parts of the tool output."""
 
     insider_trades_summary: str
-    """A brief summary and analysis of recent insider trading activity and its potential significance, based *only* on the tool output."""
+    """A brief summary and analysis of recent insider trading activity based *only* on the TEXTUAL parts of the tool output."""
 
     institutional_ownership_summary: Optional[str] = None
-    """Optional brief commentary on top institutional holders, based *only* on the tool output."""
+    """Optional brief commentary on top institutional holders based *only* on the TEXTUAL parts of the tool output."""
     
-    key_metrics: List[str]
-    """List of key financial metrics and their values, extracted *only* from the tool output."""
+    key_metrics: List[str] # This might become less useful if metrics summary is in financial_summary
+    """List of key financial metrics values extracted *only* from the TEXTUAL summary in the tool output."""
     
     growth_analysis: str
-    """Analysis of the company's growth trends, based *only* on the tool output, including segment growth insights."""
+    """Analysis of growth trends based *only* on the TEXTUAL parts of the tool output."""
     
     revenue_segment_analysis: str
-    """Specific analysis focusing on revenue segments, diversification, drivers, and risks, based *only* on the tool output."""
+    """Analysis of revenue segments based *only* on the TEXTUAL parts of the tool output."""
     
     risk_factors: Optional[List[str]] = None
-    """Optional list of identified financial risk factors, based *only* on the tool output, potentially including segment-specific, news-driven, insider-trade, or ownership-related risks."""
+    """Optional list of identified financial risk factors based *only* on the TEXTUAL parts of the tool output."""
+
+    raw_chart_data: Optional[str] = None
+    """The verbatim chart data block (including markers) extracted from the tool output, intended for frontend visualization."""
 
 
 financial_data_agent = Agent(

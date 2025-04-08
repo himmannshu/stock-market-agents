@@ -86,22 +86,53 @@ This plan outlines adding more data endpoints from the Financial Datasets API an
     *   **Agent (`financial_data_agent.py`):**
         *   Update prompt to mention ownership data availability.
 
-### Phase 2: Advanced Features & Refinements
+### Phase 2: Preparing for Visualization & Advanced Features
 
-5.  **(Advanced) Add Financial Search Endpoint:**
-    *   Investigate modifying `_make_request` or adding `_make_post_request` for POST calls.
-    *   Design how the `financial_data_agent` would construct filter criteria based on a query. This likely requires significant prompt engineering or a separate filter-generating step.
-    *   Update `financial_data_search` tool parameters to accept filter structures.
-    *   Implement formatting for generic search results.
-    *   *Decision*: Defer due to complexity.
+5.  **(Data for Charts) Enhance Tool Output for Visualization:**
+    *   **Goal**: Prepare data within the agent workflow that can be easily parsed and visualized on the future webpage.
+    *   **Tool (`financial_data_tool.py`):**
+        *   Modify `_get_stock_prices` to fetch a longer history (e.g., 90 days).
+        *   Modify `_get_company_metrics` to return *all* periods fetched (not just the latest) if `metrics` or `all` is requested.
+        *   Modify `_format_financial_data`: 
+            *   Keep the existing Markdown *textual summaries* for LLM consumption.
+            *   **Add** separate sections containing structured data intended for charts. Embed this data as CSV or JSON within Markdown code blocks (e.g., ```csv ... ``` or ```json ... ```). Include data like historical prices (Date, Close) and key historical metrics time series (Year, Period, Metric1, Metric2...). 
+    *   **Agent (`financial_data_agent.py`):**
+        *   Ensure prompt clarifies that the agent should base its *analysis* primarily on the textual summary parts of the tool output, largely ignoring the raw data blocks intended for charts (as these are for the frontend).
+    *   **Agent (`writer_agent.py`):**
+        *   Ensure prompt instructs the agent to pass through the structured data blocks (CSV/JSON) from the tool output into the final report *without alteration or interpretation*, alongside its textual analysis. These blocks act as data payloads for the frontend.
 
-6.  **(Advanced) Add Visual Charts:**
-    *   Investigate options: Markdown tables suitable for copy/pasting, links to external charting tools, or more complex integrations.
-    *   *Decision*: Defer initial implementation. Focus on providing raw data clearly first. Can revisit generating chart-friendly tables later.
+6.  **(Advanced/Deferred) Add Financial Search Endpoint:**
+    *   Requires POST requests and complex filter generation. Defer.
 
-7.  **Refine Agent Prompts & Synthesis:**
-    *   After adding multiple data sources, review and significantly enhance the prompts for `financial_data_agent` and `writer_agent`.
-    *   Focus on instructing the agents how to *synthesize* information from *all* sources (news, filings, trades, ownership, financials, web search) rather than just listing them.
-    *   Ensure the `FinancialDataAnalysis` and `FinancialReportData` output models effectively capture the desired level of synthesized analysis.
+7.  **Refine Synthesis & Verification:**
+    *   Continuously iterate on `writer_agent` and `financial_data_agent` prompts based on test results to improve synthesis quality, especially focusing on drawing connections between news, trades, ownership, and financials.
+    *   Revisit `verifier_agent`: Can its prompt be improved to check for correlations mentioned by the writer? Can it specifically validate claims against the structured data passed through (though this might be hard for the LLM)?
 
-8.  **Testing:** Thoroughly test after each endpoint addition and major prompt change. 
+### Phase 3: Web Interface Integration (using Streamlit)
+
+8.  **Setup Streamlit App:**
+    *   Create `requirements.txt` if needed (add `streamlit`).
+    *   Create basic `streamlit_app.py`.
+
+9.  **Develop Core Web App:**
+    *   **UI**: Simple interface with a text input for the user query, a button ('Analyze'), and a main area to display output.
+    *   **Backend Logic (`streamlit_app.py`):**
+        *   Import necessary agent components (`FinancialResearchManager`).
+        *   On button click:
+            *   Display a loading/progress indicator.
+            *   Instantiate `FinancialResearchManager`.
+            *   Run `manager.run(query)` asynchronously (using `asyncio.run()` or Streamlit's async handling).
+            *   Capture the final report components (Markdown report text, possibly structured data separately if easier). 
+            *   *Note*: Need a way to capture `printer.py` updates for status messages in Streamlit (e.g., pass a callback function or queue to the `Printer` class).
+    *   **Display**: Render the generated Markdown report in the Streamlit app using `st.markdown()`. 
+
+10. **Integrate Chart Visualization:**
+    *   **Parsing**: In `streamlit_app.py`, after getting the report, implement logic to find and parse the CSV/JSON data embedded within the Markdown code blocks.
+    *   **Charting**: Use a library like `streamlit.line_chart`, `streamlit.bar_chart`, `plotly`, or `altair` to generate interactive charts from the parsed data (e.g., stock price trend, historical revenue/metric trends).
+    *   **Display**: Display the generated charts within the Streamlit app, potentially using columns or expanders (`st.columns`, `st.expander`) alongside the text report.
+
+11. **Deployment (Optional):**
+    *   Prepare for deployment (e.g., ensure requirements are listed).
+    *   Deploy using Streamlit Community Cloud or another platform.
+
+12. **Testing:** Thoroughly test the web application workflow, including chart generation and responsiveness. 

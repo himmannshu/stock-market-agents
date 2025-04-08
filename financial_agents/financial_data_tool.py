@@ -1,6 +1,7 @@
 import os
 import requests
 from typing import Any, Dict, List, Optional
+import json # For potential JSON embedding later
 
 from agents import function_tool
 
@@ -30,10 +31,10 @@ def _get_financial_statements(ticker: str, statement_type: str, period: str = "a
 
 def _get_company_metrics(ticker: str, period: str = "annual", limit: int = 3) -> Dict[str, Any]:
     """Get historical financial metrics for a company."""
-    url = f"{BASE_URL}/metrics/historical?ticker={ticker}&period={period}&limit={limit}" 
+    url = f"{BASE_URL}/financial-metrics?ticker={ticker}&period={period}&limit={limit}" 
     return _make_request(url)
 
-def _get_stock_prices(ticker: str, interval: str = "1d", limit: int = 10) -> Dict[str, Any]:
+def _get_stock_prices(ticker: str, interval: str = "1d", limit: int = 90) -> Dict[str, Any]:
     """Get stock price data."""
     url = f"{BASE_URL}/prices?ticker={ticker}&interval={interval}&limit={limit}"
     return _make_request(url)
@@ -75,8 +76,9 @@ def _get_institutional_ownership(ticker: str, limit: int = 10) -> Dict[str, Any]
     return _make_request(url)
 
 def _format_financial_data(data: Dict[str, Any], ticker: str) -> str:
-    """Format the retrieved financial data into a readable Markdown summary."""
+    """Format the retrieved financial data into a readable Markdown summary, embedding raw data for charts."""
     summary = f"## Financial Data Summary for {ticker}\n\n"
+    chart_data_blocks = "\n\n<!-- CHART DATA START -->\n"
     
     # News (Top)
     news_data = data.get("company_news")
@@ -125,6 +127,12 @@ def _format_financial_data(data: Dict[str, Any], ticker: str) -> str:
              summary += f"| Market Cap     | {latest_metrics.get('marketCap', 'N/A')} |\n"
              summary += f"| P/E Ratio      | {latest_metrics.get('peRatio', 'N/A')} |\n"
              summary += f"| Dividend Yield | {latest_metrics.get('dividendYield', 'N/A')} |\n\n"
+             
+             # Embed historical metrics data for charts (CSV format)
+             chart_data_blocks += "\n```csv\n# HISTORICAL_METRICS\nYear,Period,MarketCap,PERatio,DividendYield\n"
+             for metric_period in reversed(metrics_list):
+                 chart_data_blocks += f"{metric_period.get('year','')},{metric_period.get('period','')},{metric_period.get('marketCap','')},{metric_period.get('peRatio','')},{metric_period.get('dividendYield','')}\n"
+             chart_data_blocks += "```\n"
         else:
             summary += "### Key Metrics\nNot Available\n\n"
     
@@ -271,6 +279,12 @@ def _format_financial_data(data: Dict[str, Any], ticker: str) -> str:
             summary += "### Latest Stock Price\n"
             summary += f"**Date:** {latest.get('date', 'N/A')}\n"
             summary += f"**Close:** {latest.get('close', 'N/A')}\n\n"
+            
+            # Embed historical price data for charts (CSV format)
+            chart_data_blocks += "\n```csv\n# HISTORICAL_PRICES\nDate,Close\n"
+            for price_point in reversed(prices): 
+                chart_data_blocks += f"{price_point.get('date','')},{price_point.get('close','')}\n"
+            chart_data_blocks += "```\n"
         else:
             summary += "### Latest Stock Price\nNot Available\n\n"
             
@@ -286,6 +300,8 @@ def _format_financial_data(data: Dict[str, Any], ticker: str) -> str:
         else:
             summary += "### Latest Earnings Press Release\nNot Available\n\n"
             
+    # Append chart data to the end
+    summary += chart_data_blocks + "\n<!-- CHART DATA END -->\n"
     return summary.strip()
 
 
@@ -299,11 +315,11 @@ async def financial_data_search(ticker: str,
                                 filings_limit: Optional[int] = None,
                                 news_limit: Optional[int] = None,
                                 insider_trades_limit: Optional[int] = None,
-                                inst_ownership_limit: Optional[int] = None) -> str:
+                                inst_ownership_limit: Optional[int] = None,
+                                price_limit: Optional[int] = None) -> str:
     """
     Search for financial data about a company using Financial Datasets API.
-    Retrieves company info, metrics, statements, segmented revenues, filings, news, 
-    insider trades, institutional ownership, price, and press releases.
+    Retrieves various financial data points including historical prices for charting.
     
     Args:
         ticker: The stock ticker symbol (e.g., AAPL, MSFT, GOOGL). Should be uppercase.
@@ -318,9 +334,10 @@ async def financial_data_search(ticker: str,
         news_limit: Optional limit for recent news articles. Defaults to 5.
         insider_trades_limit: Optional limit for recent insider trades. Defaults to 10.
         inst_ownership_limit: Optional limit for top institutional owners. Defaults to 10.
+        price_limit: Optional limit for historical stock prices. Defaults to 90.
         
     Returns:
-        Formatted summary of the financial data or an error message.
+        Formatted Markdown summary including embedded CSV data for charts.
     """
     try:
         result = {}
@@ -344,10 +361,23 @@ async def financial_data_search(ticker: str,
         if effective_data_type in ["info", "all"]:
             result["company_info"] = _get_company_info(ticker)
             
+        if effective_data_type in ["news", "all"]:
+            limit_to_use = news_limit if news_limit else 5
+            result["company_news"] = _get_company_news(ticker, limit=limit_to_use)
+            
+        if effective_data_type in ["institutional-ownership", "all"]:
+            limit_to_use = inst_ownership_limit if inst_ownership_limit else 10
+            result["institutional_ownership"] = _get_institutional_ownership(ticker, limit=limit_to_use)
+            
         if effective_data_type in ["metrics", "all"]:
             period_to_use = metrics_period if metrics_period else "annual"
             limit_to_use = metrics_limit if metrics_limit else 3
             result["metrics"] = _get_company_metrics(ticker, period=period_to_use, limit=limit_to_use)
+            
+        if effective_data_type in ["segmented-revenues", "all"]:
+            period_to_use = segmented_period if segmented_period else "annual"
+            limit_to_use = segmented_limit if segmented_limit else 1
+            result["segmented_revenues"] = _get_segmented_revenues(ticker, period=period_to_use, limit=limit_to_use)
             
         if effective_data_type in ["income", "all"]:
             result["income_statements"] = _get_financial_statements(ticker, "income-statements", "annual", 1)
@@ -358,29 +388,17 @@ async def financial_data_search(ticker: str,
         if effective_data_type in ["cash-flow", "all"]:
             result["cash_flow_statements"] = _get_financial_statements(ticker, "cash-flow-statements", "annual", 1)
 
-        if effective_data_type in ["segmented-revenues", "all"]:
-            period_to_use = segmented_period if segmented_period else "annual"
-            limit_to_use = segmented_limit if segmented_limit else 1
-            result["segmented_revenues"] = _get_segmented_revenues(ticker, period=period_to_use, limit=limit_to_use)
-
         if effective_data_type in ["sec-filings", "all"]:
             limit_to_use = filings_limit if filings_limit else 5
             result["sec_filings"] = _get_sec_filings(ticker, limit=limit_to_use)
-
-        if effective_data_type in ["news", "all"]:
-            limit_to_use = news_limit if news_limit else 5
-            result["company_news"] = _get_company_news(ticker, limit=limit_to_use)
             
         if effective_data_type in ["insider-trades", "all"]:
             limit_to_use = insider_trades_limit if insider_trades_limit else 10
             result["insider_trades"] = _get_insider_trades(ticker, limit=limit_to_use)
-            
-        if effective_data_type in ["institutional-ownership", "all"]:
-            limit_to_use = inst_ownership_limit if inst_ownership_limit else 10
-            result["institutional_ownership"] = _get_institutional_ownership(ticker, limit=limit_to_use)
-            
+
         if effective_data_type in ["prices", "all"]:
-            result["prices"] = _get_stock_prices(ticker, limit=1)
+            limit_to_use = price_limit if price_limit else 90
+            result["prices"] = _get_stock_prices(ticker, limit=limit_to_use)
             
         if effective_data_type in ["press-releases", "all"]:
              result["press_releases"] = _get_press_releases(ticker, limit=1)
