@@ -1,1 +1,4 @@
 openai-agents
+rich
+streamlit
+pandas
