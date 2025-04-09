@@ -76,65 +76,58 @@ def _get_institutional_ownership(ticker: str, limit: int = 10) -> Dict[str, Any]
     return _make_request(url)
 
 def _format_financial_data(data: Dict[str, Any], ticker: str) -> str:
-    """Format the retrieved financial data into a readable Markdown summary, embedding raw data for charts."""
-    summary = f"## Financial Data Summary for {ticker}\n\n"
-    chart_data_blocks = "\n\n<!-- CHART DATA START -->\n"
+    """Format the retrieved financial data into a detailed Markdown structure."""
+    # Initialize the output string
+    output = f"## Financial Data Details for {ticker}\n\n"
     
     # News (Top)
     news_data = data.get("company_news")
     if news_data:
         news_list = news_data.get("news", [])
         if news_list:
-            summary += "### Recent News\n"
+            output += "### Recent News\n"
             for news_item in news_list:
-                summary += f"* [{news_item.get('date', 'N/A')}]: {news_item.get('title', 'N/A')} ({news_item.get('source', 'N/A')})\n"
-            summary += "\n"
+                output += f"* [{news_item.get('date', 'N/A')}]: {news_item.get('title', 'N/A')} ({news_item.get('source', 'N/A')})\n"
+            output += "\n"
         else:
-            summary += "### Recent News\nNot Available\n\n"
+            output += "### Recent News\nNot Available\n\n"
             
     # Company Info
     info = data.get("company_info")
     if info:
         company_data = info.get("company", {}) 
-        summary += f"**Company:** {company_data.get('name', ticker)}\n"
-        summary += f"**Industry:** {company_data.get('industry', 'N/A')}\n"
-        summary += f"**Sector:** {company_data.get('sector', 'N/A')}\n\n"
+        output += f"**Company:** {company_data.get('name', ticker)}\n"
+        output += f"**Industry:** {company_data.get('industry', 'N/A')}\n"
+        output += f"**Sector:** {company_data.get('sector', 'N/A')}\n\n"
     
     # Institutional Ownership
     inst_ownership_data = data.get("institutional_ownership")
     if inst_ownership_data:
         owners = inst_ownership_data.get("institutional_ownership", [])
         if owners:
-            summary += "### Top Institutional Holders\n"
-            summary += "| Holder Name                | Shares Held   | Reported Date |\n"
-            summary += "|----------------------------|---------------|---------------|\n"
+            output += "### Top Institutional Holders\n"
+            output += "| Holder Name                | Shares Held   | Reported Date |\n"
+            output += "|----------------------------|---------------|---------------|\n"
             for owner in owners:
-                 summary += f"| {owner.get('investor_name', 'N/A'):<26} | {owner.get('shares_held', 'N/A'):<13} | {owner.get('report_date', 'N/A'):<13} |\n"
-            summary += "\n"
+                 output += f"| {owner.get('investor_name', 'N/A'):<26} | {owner.get('shares_held', 'N/A'):<13} | {owner.get('report_date', 'N/A'):<13} |\n"
+            output += "\n"
         else:
-            summary += "### Top Institutional Holders\nNot Available\n\n"
+            output += "### Top Institutional Holders\nNot Available\n\n"
             
     # Metrics
     metrics = data.get("metrics")
     if metrics:
         metrics_list = metrics.get("metrics", [])
         if metrics_list:
-             latest_metrics = metrics_list[0] 
-             period_label = f"{latest_metrics.get('period','N/A')} {latest_metrics.get('year','N/A')}"
-             summary += f"### Latest Key Metrics ({period_label})\n"
-             summary += "| Metric         | Value         |\n"
-             summary += "|----------------|---------------|\n"
-             summary += f"| Market Cap     | {latest_metrics.get('marketCap', 'N/A')} |\n"
-             summary += f"| P/E Ratio      | {latest_metrics.get('peRatio', 'N/A')} |\n"
-             summary += f"| Dividend Yield | {latest_metrics.get('dividendYield', 'N/A')} |\n\n"
-             
-             # Embed historical metrics data for charts (CSV format)
-             chart_data_blocks += "\n```csv\n# HISTORICAL_METRICS\nYear,Period,MarketCap,PERatio,DividendYield\n"
-             for metric_period in reversed(metrics_list):
-                 chart_data_blocks += f"{metric_period.get('year','')},{metric_period.get('period','')},{metric_period.get('marketCap','')},{metric_period.get('peRatio','')},{metric_period.get('dividendYield','')}\n"
-             chart_data_blocks += "```\n"
+            output += f"### Historical Key Metrics\n"
+            output += "| Year | Period | Market Cap     | P/E Ratio      | Dividend Yield |\n"
+            output += "|------|--------|----------------|----------------|----------------|\n"
+            # Iterate through all retrieved metric periods
+            for metric_period in metrics_list: 
+                output += f"| {metric_period.get('year','N/A')} | {metric_period.get('period','N/A'):<6} | {metric_period.get('marketCap', 'N/A'):<14} | {metric_period.get('peRatio', 'N/A'):<14} | {metric_period.get('dividendYield', 'N/A'):<14} |\n"
+            output += "\n"
         else:
-            summary += "### Key Metrics\nNot Available\n\n"
+            output += "### Key Metrics\nNot Available\n\n"
     
     # Segmented Revenues
     segmented_revenues_data = data.get("segmented_revenues")
@@ -143,7 +136,7 @@ def _format_financial_data(data: Dict[str, Any], ticker: str) -> str:
         if segments_list:
             latest_segment_report = segments_list[0]
             period_label = f"{latest_segment_report.get('period', 'N/A')} {latest_segment_report.get('report_period', 'N/A')}"
-            summary += f"### Segmented Revenues ({period_label})\n"
+            output += f"### Segmented Revenues ({period_label})\n"
             
             product_segments = {}
             geo_segments = {}
@@ -163,99 +156,96 @@ def _format_financial_data(data: Dict[str, Any], ticker: str) -> str:
                     other_segments[label] = amount
             
             if product_segments:
-                summary += "**By Product/Service:**\n"
-                summary += "| Segment        | Revenue       |\n"
-                summary += "|----------------|---------------|\n"
+                output += "**By Product/Service:**\n"
+                output += "| Segment        | Revenue       |\n"
+                output += "|----------------|---------------|\n"
                 for label, amount in product_segments.items():
-                    summary += f"| {label:<14} | {amount:<13} |\n" 
-                summary += "\n"
+                    output += f"| {label:<14} | {amount:<13} |\n" 
+                output += "\n"
             
             if geo_segments:
-                summary += "**By Geography/Segment:**\n"
-                summary += "| Segment        | Revenue       |\n"
-                summary += "|----------------|---------------|\n"
+                output += "**By Geography/Segment:**\n"
+                output += "| Segment        | Revenue       |\n"
+                output += "|----------------|---------------|\n"
                 for label, amount in geo_segments.items():
-                     summary += f"| {label:<14} | {amount:<13} |\n"
-                summary += "\n"
+                     output += f"| {label:<14} | {amount:<13} |\n"
+                output += "\n"
             
             if other_segments:
-                summary += "**By Other Segments:**\n"
-                summary += "| Segment        | Revenue       |\n"
-                summary += "|----------------|---------------|\n"
+                output += "**By Other Segments:**\n"
+                output += "| Segment        | Revenue       |\n"
+                output += "|----------------|---------------|\n"
                 for label, amount in other_segments.items():
-                     summary += f"| {label:<14} | {amount:<13} |\n"
-                summary += "\n"
+                     output += f"| {label:<14} | {amount:<13} |\n"
+                output += "\n"
         else:
-            summary += "### Segmented Revenues\nNot Available\n\n"
+            output += "### Segmented Revenues\nNot Available\n\n"
 
     # Financial Statements (Income, Balance, Cash Flow)
     income_statements_data = data.get("income_statements")
     if income_statements_data:
         income = income_statements_data.get("income_statements", [])
         if income:
-            latest = income[0]
-            period_label = f"{latest.get('period', 'N/A')} {latest.get('year', 'N/A')}"
-            summary += f"### Latest Income Statement ({period_label})\n"
-            summary += "| Item       | Value         |\n"
-            summary += "|------------|---------------|\n"
-            summary += f"| Revenue    | {latest.get('revenue', 'N/A')} |\n"
-            summary += f"| Net Income | {latest.get('netIncome', 'N/A')} |\n"
-            summary += f"| EPS        | {latest.get('eps', 'N/A')} |\n\n"
+            output += f"### Historical Income Statements\n"
+            output += "| Year | Period | Revenue        | Net Income     | EPS            |\n"
+            output += "|------|--------|----------------|----------------|----------------|\n"
+            # Iterate through all retrieved income statements
+            for statement in income:
+                output += f"| {statement.get('year','N/A')} | {statement.get('period','N/A'):<6} | {statement.get('revenue', 'N/A'):<14} | {statement.get('netIncome', 'N/A'):<14} | {statement.get('eps', 'N/A'):<14} |\n"
+            output += "\n"
         else:
-             summary += "### Latest Income Statement\nNot Available\n\n"
+             output += "### Income Statements\nNot Available\n\n"
     
     balance_sheets_data = data.get("balance_sheets")
     if balance_sheets_data:
         balance = balance_sheets_data.get("balance_sheets", [])
         if balance:
-            latest = balance[0]
-            period_label = f"{latest.get('period', 'N/A')} {latest.get('year', 'N/A')}"
-            summary += f"### Latest Balance Sheet ({period_label})\n"
-            summary += "| Item             | Value         |\n"
-            summary += "|------------------|---------------|\n"
-            summary += f"| Total Assets     | {latest.get('totalAssets', 'N/A')} |\n"
-            summary += f"| Total Liabilities| {latest.get('totalLiabilities', 'N/A')} |\n"
-            summary += f"| Total Equity     | {latest.get('totalEquity', 'N/A')} |\n\n"
+            output += f"### Historical Balance Sheets\n"
+            output += "| Year | Period | Total Assets   | Total Liab.  | Total Equity   |\n"
+            output += "|------|--------|----------------|----------------|----------------|\n"
+            # Iterate through all retrieved balance sheets
+            for statement in balance:
+                output += f"| {statement.get('year','N/A')} | {statement.get('period','N/A'):<6} | {statement.get('totalAssets', 'N/A'):<14} | {statement.get('totalLiabilities', 'N/A'):<14} | {statement.get('totalEquity', 'N/A'):<14} |\n"
+            output += "\n"
         else:
-             summary += "### Latest Balance Sheet\nNot Available\n\n"
+             output += "### Balance Sheets\nNot Available\n\n"
     
     cash_flow_statements_data = data.get("cash_flow_statements")
     if cash_flow_statements_data:
         cash_flow = cash_flow_statements_data.get("cash_flow_statements", [])
         if cash_flow:
-            latest = cash_flow[0]
-            period_label = f"{latest.get('period', 'N/A')} {latest.get('year', 'N/A')}"
-            summary += f"### Latest Cash Flow Statement ({period_label})\n"
-            summary += "| Item                  | Value         |\n"
-            summary += "|-----------------------|---------------|\n"
-            summary += f"| Operating Cash Flow   | {latest.get('operatingCashFlow', 'N/A')} |\n"
-            summary += f"| Investing Cash Flow   | {latest.get('investingCashFlow', 'N/A')} |\n"
-            summary += f"| Free Cash Flow        | {latest.get('freeCashFlow', 'N/A')} |\n\n"
+            output += f"### Historical Cash Flow Statements\n"
+            output += "| Year | Period | Operating CF   | Investing CF   | Free CF        |\n"
+            output += "|------|--------|----------------|----------------|----------------|\n"
+            # Iterate through all retrieved cash flow statements
+            for statement in cash_flow:
+                output += f"| {statement.get('year','N/A')} | {statement.get('period','N/A'):<6} | {statement.get('operatingCashFlow', 'N/A'):<14} | {statement.get('investingCashFlow', 'N/A'):<14} | {statement.get('freeCashFlow', 'N/A'):<14} |\n"
+            output += "\n"
         else:
-             summary += "### Latest Cash Flow Statement\nNot Available\n\n"
+             output += "### Cash Flow Statements\nNot Available\n\n"
 
     # SEC Filings
     sec_filings_data = data.get("sec_filings")
     if sec_filings_data:
         filings = sec_filings_data.get("filings", [])
         if filings:
-            summary += "### Recent SEC Filings\n"
-            summary += "| Date       | Type      | URL                |\n"
-            summary += "|------------|-----------|--------------------|\n"
+            output += "### Recent SEC Filings\n"
+            output += "| Date       | Type      | URL                |\n"
+            output += "|------------|-----------|--------------------|\n"
             for filing in filings:
-                summary += f"| {filing.get('report_date', 'N/A')} | {filing.get('filing_type', 'N/A'):<9} | [Link]({filing.get('url', '#')}) |\n"
-            summary += "\n"
+                output += f"| {filing.get('report_date', 'N/A')} | {filing.get('filing_type', 'N/A'):<9} | [Link]({filing.get('url', '#')}) |\n"
+            output += "\n"
         else:
-            summary += "### Recent SEC Filings\nNot Available\n\n"
+            output += "### Recent SEC Filings\nNot Available\n\n"
              
     # Insider Trades
     insider_trades_data = data.get("insider_trades")
     if insider_trades_data:
         trades = insider_trades_data.get("insider_trades", [])
         if trades:
-            summary += "### Recent Insider Trades\n"
-            summary += "| Date       | Insider Name      | Relationship   | Type | Shares     | Value ($) |\n"
-            summary += "|------------|-------------------|----------------|------|------------|-----------|\n"
+            output += "### Recent Insider Trades\n"
+            output += "| Date       | Insider Name      | Relationship   | Type | Shares     | Value ($) |\n"
+            output += "|------------|-------------------|----------------|------|------------|-----------|\n"
             for trade in trades:
                 relationship = trade.get('relationship', 'N/A')
                 if len(relationship) > 14: relationship = relationship[:11] + "..."
@@ -265,28 +255,25 @@ def _format_financial_data(data: Dict[str, Any], ticker: str) -> str:
                 if trans_type == "Acquisition": type_symbol = "A"
                 elif trans_type == "Disposition": type_symbol = "D"
                 
-                summary += f"| {trade.get('date', 'N/A')} | {trade.get('insider_name', 'N/A'):<17} | {relationship:<14} | {type_symbol:<4} | {trade.get('shares', 'N/A'):<10} | {trade.get('value', 'N/A'):<9} |\n"
-            summary += "\n"
+                output += f"| {trade.get('date', 'N/A')} | {trade.get('insider_name', 'N/A'):<17} | {relationship:<14} | {type_symbol:<4} | {trade.get('shares', 'N/A'):<10} | {trade.get('value', 'N/A'):<9} |\n"
+            output += "\n"
         else:
-            summary += "### Recent Insider Trades\nNot Available\n\n"
+            output += "### Recent Insider Trades\nNot Available\n\n"
              
     # Stock Price
     prices_data = data.get("prices")
     if prices_data:
         prices = prices_data.get("prices", [])
         if prices:
-            latest = prices[0]
-            summary += "### Latest Stock Price\n"
-            summary += f"**Date:** {latest.get('date', 'N/A')}\n"
-            summary += f"**Close:** {latest.get('close', 'N/A')}\n\n"
-            
-            # Embed historical price data for charts (CSV format)
-            chart_data_blocks += "\n```csv\n# HISTORICAL_PRICES\nDate,Close\n"
-            for price_point in reversed(prices): 
-                chart_data_blocks += f"{price_point.get('date','')},{price_point.get('close','')}\n"
-            chart_data_blocks += "```\n"
+            output += "### Recent Stock Prices (Daily Close)\n"
+            output += "| Date       | Close Price    |\n"
+            output += "|------------|----------------|\n"
+            # Show the last 5 prices (or fewer if less data available)
+            for price_point in prices[:5]: # Iterate through the first 5 (most recent)
+                output += f"| {price_point.get('date', 'N/A')} | {price_point.get('close', 'N/A'):<14} |\n"
+            output += "\n"
         else:
-            summary += "### Latest Stock Price\nNot Available\n\n"
+            output += "### Recent Stock Prices\nNot Available\n\n"
             
     # Press Releases
     press_releases_data = data.get("press_releases")
@@ -294,15 +281,13 @@ def _format_financial_data(data: Dict[str, Any], ticker: str) -> str:
         releases = press_releases_data.get("press_releases", [])
         if releases:
             latest = releases[0]
-            summary += "### Latest Earnings Press Release\n"
-            summary += f"**Title:** {latest.get('title', 'N/A')}\n"
-            summary += f"**Date:** {latest.get('date', 'N/A')}\n\n"
+            output += "### Latest Earnings Press Release\n"
+            output += f"**Title:** {latest.get('title', 'N/A')}\n"
+            output += f"**Date:** {latest.get('date', 'N/A')}\n\n"
         else:
-            summary += "### Latest Earnings Press Release\nNot Available\n\n"
+            output += "### Latest Earnings Press Release\nNot Available\n\n"
             
-    # Append chart data to the end
-    summary += chart_data_blocks + "\n<!-- CHART DATA END -->\n"
-    return summary.strip()
+    return output.strip()
 
 
 @function_tool
@@ -319,7 +304,7 @@ async def financial_data_search(ticker: str,
                                 price_limit: Optional[int] = None) -> str:
     """
     Search for financial data about a company using Financial Datasets API.
-    Retrieves various financial data points including historical prices for charting.
+    Retrieves various detailed financial data points.
     
     Args:
         ticker: The stock ticker symbol (e.g., AAPL, MSFT, GOOGL). Should be uppercase.
@@ -337,7 +322,7 @@ async def financial_data_search(ticker: str,
         price_limit: Optional limit for historical stock prices. Defaults to 90.
         
     Returns:
-        Formatted Markdown summary including embedded CSV data for charts.
+        Formatted Markdown string containing detailed financial data tables and lists.
     """
     try:
         result = {}
@@ -380,13 +365,13 @@ async def financial_data_search(ticker: str,
             result["segmented_revenues"] = _get_segmented_revenues(ticker, period=period_to_use, limit=limit_to_use)
             
         if effective_data_type in ["income", "all"]:
-            result["income_statements"] = _get_financial_statements(ticker, "income-statements", "annual", 1)
+            result["income_statements"] = _get_financial_statements(ticker, "income-statements", period="annual", limit=3)
             
         if effective_data_type in ["balance", "all"]:
-            result["balance_sheets"] = _get_financial_statements(ticker, "balance-sheets", "annual", 1)
+            result["balance_sheets"] = _get_financial_statements(ticker, "balance-sheets", period="annual", limit=3)
             
         if effective_data_type in ["cash-flow", "all"]:
-            result["cash_flow_statements"] = _get_financial_statements(ticker, "cash-flow-statements", "annual", 1)
+            result["cash_flow_statements"] = _get_financial_statements(ticker, "cash-flow-statements", period="annual", limit=3)
 
         if effective_data_type in ["sec-filings", "all"]:
             limit_to_use = filings_limit if filings_limit else 5
