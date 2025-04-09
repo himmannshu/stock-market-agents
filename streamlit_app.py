@@ -20,6 +20,10 @@ analyze_button = st.button("Analyze", key="analyze_button")
 report_placeholder = st.empty() # Placeholder for the final report
 status_placeholder = st.empty() # Placeholder for status updates
 
+# --- Initialize session state --- 
+if "analysis_results" not in st.session_state:
+    st.session_state.analysis_results = None
+
 # --- Backend Logic ---
 def run_manager(user_query):
     """Instantiates and runs the FinancialResearchManager, returning the report."""
@@ -44,40 +48,46 @@ def run_manager(user_query):
 # --- Button Click Handling ---
 if analyze_button and query:
     status_placeholder.info("Processing your request... Please wait.") 
-    # Clear previous report/charts
+    # Clear previous results from session state and placeholders for a new analysis
     report_placeholder.empty()
+    st.session_state.analysis_results = None
     
-    analysis_results = run_manager(query)
+    # Run analysis and store results in session state
+    st.session_state.analysis_results = run_manager(query)
     status_placeholder.empty()
 
-    if analysis_results and analysis_results.get("markdown_report"):
-        report_markdown = analysis_results["markdown_report"]
-        
-        # Display the main report (potentially excluding chart block if desired)
-        # For now, display the full report including the raw data block
-        report_placeholder.markdown(report_markdown)
-        
-        # Display follow-up questions and verification in expanders
-        with st.expander("Follow-up Questions"):
-            st.write(analysis_results.get("follow_up_questions", []))
-        with st.expander("Verification Result"):
-             st.write(analysis_results.get("verification_result", "Not available."))
-             
-        # Add download button if report exists
-        report_markdown_for_download = analysis_results["markdown_report"]
-        # Attempt to create a filename from the query 
-        filename_query_part = re.sub(r'\W+', '_', query) # Replace non-alphanumeric with underscore
+    # Display immediately after generation
+    if st.session_state.analysis_results and st.session_state.analysis_results.get("markdown_report"):
+        pass # Handled by the display block below
+    elif st.session_state.analysis_results:
+        report_placeholder.warning("Report generation failed or returned empty.")
+
+elif analyze_button and not query:
+    st.warning("Please enter a company query.") 
+
+# --- Display Results (if available in session state) --- 
+if st.session_state.analysis_results and st.session_state.analysis_results.get("markdown_report"):
+    report_markdown = st.session_state.analysis_results["markdown_report"]
+    
+    # Use the stored query if available, otherwise fallback
+    current_query = st.session_state.get('query_input', query or "report") 
+    
+    # Download button 
+    if current_query:
+        filename_query_part = re.sub(r'\W+', '_', current_query)
         filename = f"financial_report_{filename_query_part[:30]}.md" # Limit length
         st.download_button(
             label="Download Report (Markdown)",
-            data=report_markdown_for_download,
+            data=report_markdown,
             file_name=filename,
             mime="text/markdown",
         )
-        
-    elif analysis_results:
-        report_placeholder.warning("Report generation failed or returned empty.")
-        
+
+    # Display report using placeholder
+    report_placeholder.markdown(report_markdown)
     
-elif analyze_button and not query:
-    st.warning("Please enter a company query.") 
+    # Display expanders
+    with st.expander("Follow-up Questions"):
+        st.write(st.session_state.analysis_results.get("follow_up_questions", []))
+    with st.expander("Verification Result"):
+        st.write(st.session_state.analysis_results.get("verification_result", "Not available.")) 

@@ -85,49 +85,62 @@ def _format_financial_data(data: Dict[str, Any], ticker: str) -> str:
     if news_data:
         news_list = news_data.get("news", [])
         if news_list:
-            output += "### Recent News\n"
+            output += "\n### Recent News\n\n"
             for news_item in news_list:
-                output += f"* [{news_item.get('date', 'N/A')}]: {news_item.get('title', 'N/A')} ({news_item.get('source', 'N/A')})\n"
+                # Avoid potential bolding/italics in titles/sources
+                title = news_item.get('title', 'N/A').replace("*", "")
+                source = news_item.get('source', 'N/A').replace("*", "")
+                output += f"* [{news_item.get('date', 'N/A')}]: {title} ({source})\n"
             output += "\n"
         else:
-            output += "### Recent News\nNot Available\n\n"
+            output += "\n### Recent News\nNot Available\n\n"
             
     # Company Info
     info = data.get("company_info")
     if info:
         company_data = info.get("company", {}) 
-        output += f"**Company:** {company_data.get('name', ticker)}\n"
-        output += f"**Industry:** {company_data.get('industry', 'N/A')}\n"
-        output += f"**Sector:** {company_data.get('sector', 'N/A')}\n\n"
+        # Use regular text, not bold for these labels
+        output += f"Company: {company_data.get('name', ticker)}\n"
+        output += f"Industry: {company_data.get('industry', 'N/A')}\n"
+        output += f"Sector: {company_data.get('sector', 'N/A')}\n\n"
     
     # Institutional Ownership
     inst_ownership_data = data.get("institutional_ownership")
     if inst_ownership_data:
         owners = inst_ownership_data.get("institutional_ownership", [])
         if owners:
-            output += "### Top Institutional Holders\n"
+            output += "\n### Top Institutional Holders\n\n"
             output += "| Holder Name                | Shares Held   | Reported Date |\n"
             output += "|----------------------------|---------------|---------------|\n"
             for owner in owners:
-                 output += f"| {owner.get('investor_name', 'N/A'):<26} | {owner.get('shares_held', 'N/A'):<13} | {owner.get('report_date', 'N/A'):<13} |\n"
+                 # Ensure values don't contain markdown characters that break tables
+                 name = str(owner.get('investor_name', 'N/A')).replace("|", "/")
+                 shares = str(owner.get('shares_held', 'N/A')).replace("|", "/")
+                 date = str(owner.get('report_date', 'N/A')).replace("|", "/")
+                 output += f"| {name:<26} | {shares:<13} | {date:<13} |\n"
             output += "\n"
         else:
-            output += "### Top Institutional Holders\nNot Available\n\n"
+            output += "\n### Top Institutional Holders\nNot Available\n\n"
             
     # Metrics
     metrics = data.get("metrics")
     if metrics:
         metrics_list = metrics.get("metrics", [])
         if metrics_list:
-            output += f"### Historical Key Metrics\n"
+            output += f"\n### Historical Key Metrics\n\n"
             output += "| Year | Period | Market Cap     | P/E Ratio      | Dividend Yield |\n"
             output += "|------|--------|----------------|----------------|----------------|\n"
             # Iterate through all retrieved metric periods
             for metric_period in metrics_list: 
-                output += f"| {metric_period.get('year','N/A')} | {metric_period.get('period','N/A'):<6} | {metric_period.get('marketCap', 'N/A'):<14} | {metric_period.get('peRatio', 'N/A'):<14} | {metric_period.get('dividendYield', 'N/A'):<14} |\n"
+                 year = str(metric_period.get('year','N/A')).replace("|", "/")
+                 period = str(metric_period.get('period','N/A')).replace("|", "/")
+                 mcap = str(metric_period.get('marketCap', 'N/A')).replace("|", "/")
+                 pe = str(metric_period.get('peRatio', 'N/A')).replace("|", "/")
+                 divy = str(metric_period.get('dividendYield', 'N/A')).replace("|", "/")
+                 output += f"| {year} | {period:<6} | {mcap:<14} | {pe:<14} | {divy:<14} |\n"
             output += "\n"
         else:
-            output += "### Key Metrics\nNot Available\n\n"
+            output += "\n### Key Metrics\nNot Available\n\n"
     
     # Segmented Revenues
     segmented_revenues_data = data.get("segmented_revenues")
@@ -136,7 +149,7 @@ def _format_financial_data(data: Dict[str, Any], ticker: str) -> str:
         if segments_list:
             latest_segment_report = segments_list[0]
             period_label = f"{latest_segment_report.get('period', 'N/A')} {latest_segment_report.get('report_period', 'N/A')}"
-            output += f"### Segmented Revenues ({period_label})\n"
+            output += f"\n### Segmented Revenues ({period_label})\n\n"
             
             product_segments = {}
             geo_segments = {}
@@ -160,7 +173,10 @@ def _format_financial_data(data: Dict[str, Any], ticker: str) -> str:
                 output += "| Segment        | Revenue       |\n"
                 output += "|----------------|---------------|\n"
                 for label, amount in product_segments.items():
-                    output += f"| {label:<14} | {amount:<13} |\n" 
+                    clean_label = str(label).replace("|", "/")
+                    clean_amount = str(amount).replace("|", "/")
+                    output += f"| {clean_label:<14} | {clean_amount:<13} |\n" 
+                output += "\n"
                 output += "\n"
             
             if geo_segments:
@@ -168,7 +184,10 @@ def _format_financial_data(data: Dict[str, Any], ticker: str) -> str:
                 output += "| Segment        | Revenue       |\n"
                 output += "|----------------|---------------|\n"
                 for label, amount in geo_segments.items():
-                     output += f"| {label:<14} | {amount:<13} |\n"
+                     clean_label = str(label).replace("|", "/")
+                     clean_amount = str(amount).replace("|", "/")
+                     output += f"| {clean_label:<14} | {clean_amount:<13} |\n"
+                output += "\n"
                 output += "\n"
             
             if other_segments:
@@ -176,104 +195,132 @@ def _format_financial_data(data: Dict[str, Any], ticker: str) -> str:
                 output += "| Segment        | Revenue       |\n"
                 output += "|----------------|---------------|\n"
                 for label, amount in other_segments.items():
-                     output += f"| {label:<14} | {amount:<13} |\n"
+                     clean_label = str(label).replace("|", "/")
+                     clean_amount = str(amount).replace("|", "/")
+                     output += f"| {clean_label:<14} | {clean_amount:<13} |\n"
+                output += "\n"
                 output += "\n"
         else:
-            output += "### Segmented Revenues\nNot Available\n\n"
+            output += "\n### Segmented Revenues\nNot Available\n\n"
 
     # Financial Statements (Income, Balance, Cash Flow)
     income_statements_data = data.get("income_statements")
     if income_statements_data:
         income = income_statements_data.get("income_statements", [])
         if income:
-            output += f"### Historical Income Statements\n"
+            output += f"\n### Historical Income Statements\n\n"
             output += "| Year | Period | Revenue        | Net Income     | EPS            |\n"
             output += "|------|--------|----------------|----------------|----------------|\n"
             # Iterate through all retrieved income statements
             for statement in income:
-                output += f"| {statement.get('year','N/A')} | {statement.get('period','N/A'):<6} | {statement.get('revenue', 'N/A'):<14} | {statement.get('netIncome', 'N/A'):<14} | {statement.get('eps', 'N/A'):<14} |\n"
+                 year = str(statement.get('year','N/A')).replace("|", "/")
+                 period = str(statement.get('period','N/A')).replace("|", "/")
+                 rev = str(statement.get('revenue', 'N/A')).replace("|", "/")
+                 ni = str(statement.get('netIncome', 'N/A')).replace("|", "/")
+                 eps = str(statement.get('eps', 'N/A')).replace("|", "/")
+                 output += f"| {year} | {period:<6} | {rev:<14} | {ni:<14} | {eps:<14} |\n"
             output += "\n"
         else:
-             output += "### Income Statements\nNot Available\n\n"
+             output += "\n### Income Statements\nNot Available\n\n"
     
     balance_sheets_data = data.get("balance_sheets")
     if balance_sheets_data:
         balance = balance_sheets_data.get("balance_sheets", [])
         if balance:
-            output += f"### Historical Balance Sheets\n"
+            output += f"\n### Historical Balance Sheets\n\n"
             output += "| Year | Period | Total Assets   | Total Liab.  | Total Equity   |\n"
             output += "|------|--------|----------------|----------------|----------------|\n"
             # Iterate through all retrieved balance sheets
             for statement in balance:
-                output += f"| {statement.get('year','N/A')} | {statement.get('period','N/A'):<6} | {statement.get('totalAssets', 'N/A'):<14} | {statement.get('totalLiabilities', 'N/A'):<14} | {statement.get('totalEquity', 'N/A'):<14} |\n"
+                 year = str(statement.get('year','N/A')).replace("|", "/")
+                 period = str(statement.get('period','N/A')).replace("|", "/")
+                 assets = str(statement.get('totalAssets', 'N/A')).replace("|", "/")
+                 liab = str(statement.get('totalLiabilities', 'N/A')).replace("|", "/")
+                 equity = str(statement.get('totalEquity', 'N/A')).replace("|", "/")
+                 output += f"| {year} | {period:<6} | {assets:<14} | {liab:<14} | {equity:<14} |\n"
             output += "\n"
         else:
-             output += "### Balance Sheets\nNot Available\n\n"
+             output += "\n### Balance Sheets\nNot Available\n\n"
     
     cash_flow_statements_data = data.get("cash_flow_statements")
     if cash_flow_statements_data:
         cash_flow = cash_flow_statements_data.get("cash_flow_statements", [])
         if cash_flow:
-            output += f"### Historical Cash Flow Statements\n"
+            output += f"\n### Historical Cash Flow Statements\n\n"
             output += "| Year | Period | Operating CF   | Investing CF   | Free CF        |\n"
             output += "|------|--------|----------------|----------------|----------------|\n"
             # Iterate through all retrieved cash flow statements
             for statement in cash_flow:
-                output += f"| {statement.get('year','N/A')} | {statement.get('period','N/A'):<6} | {statement.get('operatingCashFlow', 'N/A'):<14} | {statement.get('investingCashFlow', 'N/A'):<14} | {statement.get('freeCashFlow', 'N/A'):<14} |\n"
+                 year = str(statement.get('year','N/A')).replace("|", "/")
+                 period = str(statement.get('period','N/A')).replace("|", "/")
+                 ocf = str(statement.get('operatingCashFlow', 'N/A')).replace("|", "/")
+                 icf = str(statement.get('investingCashFlow', 'N/A')).replace("|", "/")
+                 fcf = str(statement.get('freeCashFlow', 'N/A')).replace("|", "/")
+                 output += f"| {year} | {period:<6} | {ocf:<14} | {icf:<14} | {fcf:<14} |\n"
             output += "\n"
         else:
-             output += "### Cash Flow Statements\nNot Available\n\n"
+             output += "\n### Cash Flow Statements\nNot Available\n\n"
 
     # SEC Filings
     sec_filings_data = data.get("sec_filings")
     if sec_filings_data:
         filings = sec_filings_data.get("filings", [])
         if filings:
-            output += "### Recent SEC Filings\n"
+            output += "\n### Recent SEC Filings\n\n"
             output += "| Date       | Type      | URL                |\n"
             output += "|------------|-----------|--------------------|\n"
             for filing in filings:
-                output += f"| {filing.get('report_date', 'N/A')} | {filing.get('filing_type', 'N/A'):<9} | [Link]({filing.get('url', '#')}) |\n"
+                 date = str(filing.get('report_date', 'N/A')).replace("|", "/")
+                 type = str(filing.get('filing_type', 'N/A')).replace("|", "/")
+                 url = filing.get('url', '#') # URL should be safe
+                 output += f"| {date} | {type:<9} | [Link]({url}) |\n"
             output += "\n"
         else:
-            output += "### Recent SEC Filings\nNot Available\n\n"
+            output += "\n### Recent SEC Filings\nNot Available\n\n"
              
     # Insider Trades
     insider_trades_data = data.get("insider_trades")
     if insider_trades_data:
         trades = insider_trades_data.get("insider_trades", [])
         if trades:
-            output += "### Recent Insider Trades\n"
+            output += "\n### Recent Insider Trades\n\n"
             output += "| Date       | Insider Name      | Relationship   | Type | Shares     | Value ($) |\n"
             output += "|------------|-------------------|----------------|------|------------|-----------|\n"
             for trade in trades:
-                relationship = trade.get('relationship', 'N/A')
-                if len(relationship) > 14: relationship = relationship[:11] + "..."
+                relationship_raw = str(trade.get('relationship', 'N/A')).replace("|", "/")
+                relationship = relationship_raw[:11] + "..." if len(relationship_raw) > 14 else relationship_raw
                 
                 trans_type = trade.get('transaction_type', 'N/A')
                 type_symbol = "?"
                 if trans_type == "Acquisition": type_symbol = "A"
                 elif trans_type == "Disposition": type_symbol = "D"
                 
-                output += f"| {trade.get('date', 'N/A')} | {trade.get('insider_name', 'N/A'):<17} | {relationship:<14} | {type_symbol:<4} | {trade.get('shares', 'N/A'):<10} | {trade.get('value', 'N/A'):<9} |\n"
+                date = str(trade.get('date', 'N/A')).replace("|", "/")
+                name = str(trade.get('insider_name', 'N/A')).replace("|", "/")
+                shares = str(trade.get('shares', 'N/A')).replace("|", "/")
+                value = str(trade.get('value', 'N/A')).replace("|", "/")
+                
+                output += f"| {date} | {name:<17} | {relationship:<14} | {type_symbol:<4} | {shares:<10} | {value:<9} |\n"
             output += "\n"
         else:
-            output += "### Recent Insider Trades\nNot Available\n\n"
+            output += "\n### Recent Insider Trades\nNot Available\n\n"
              
     # Stock Price
     prices_data = data.get("prices")
     if prices_data:
         prices = prices_data.get("prices", [])
         if prices:
-            output += "### Recent Stock Prices (Daily Close)\n"
+            output += "\n### Recent Stock Prices (Daily Close)\n\n"
             output += "| Date       | Close Price    |\n"
             output += "|------------|----------------|\n"
             # Show the last 5 prices (or fewer if less data available)
             for price_point in prices[:5]: # Iterate through the first 5 (most recent)
-                output += f"| {price_point.get('date', 'N/A')} | {price_point.get('close', 'N/A'):<14} |\n"
+                 date = str(price_point.get('date', 'N/A')).replace("|", "/")
+                 close = str(price_point.get('close', 'N/A')).replace("|", "/")
+                 output += f"| {date} | {close:<14} |\n"
             output += "\n"
         else:
-            output += "### Recent Stock Prices\nNot Available\n\n"
+            output += "\n### Recent Stock Prices\nNot Available\n\n"
             
     # Press Releases
     press_releases_data = data.get("press_releases")
@@ -281,11 +328,13 @@ def _format_financial_data(data: Dict[str, Any], ticker: str) -> str:
         releases = press_releases_data.get("press_releases", [])
         if releases:
             latest = releases[0]
-            output += "### Latest Earnings Press Release\n"
-            output += f"**Title:** {latest.get('title', 'N/A')}\n"
-            output += f"**Date:** {latest.get('date', 'N/A')}\n\n"
+            output += "\n### Latest Earnings Press Release\n\n"
+            # Avoid potential bolding/italics in title
+            title = latest.get('title', 'N/A').replace("*", "")
+            output += f"Title: {title}\n"
+            output += f"Date: {latest.get('date', 'N/A')}\n\n"
         else:
-            output += "### Latest Earnings Press Release\nNot Available\n\n"
+            output += "\n### Latest Earnings Press Release\nNot Available\n\n"
             
     return output.strip()
 

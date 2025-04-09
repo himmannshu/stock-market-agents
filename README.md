@@ -1,57 +1,87 @@
-# Financial Research Agent Example
+# Financial Research Agent with Streamlit Interface
 
-This example shows how you might compose a richer financial research agent using the Agents SDK. The pattern is similar to the `research_bot` example, but with more specialized sub‑agents and a verification step.
+This project demonstrates a multi-agent system for generating financial research reports for publicly traded companies, accessible via a Streamlit web interface.
 
-The flow is:
+## Overview
 
-1. **Planning**: A planner agent turns the end user's request into a list of search terms relevant to financial analysis – recent news, earnings calls, corporate filings, industry commentary, etc.
-2. **Financial Data**: A financial data agent retrieves detailed financial information for the company using the Financial Datasets API, including income statements, balance sheets, and key metrics.
-3. **Search**: A search agent uses the built‑in `WebSearchTool` to retrieve terse summaries for each search term. (You could also add `FileSearchTool` if you have indexed PDFs or 10‑Ks.)
-4. **Sub‑analysts**: Additional agents (e.g. a fundamentals analyst and a risk analyst) are exposed as tools so the writer can call them inline and incorporate their outputs.
-5. **Writing**: A senior writer agent brings together the search snippets, financial data, and any sub‑analyst summaries into a long‑form markdown report plus a short executive summary.
-6. **Verification**: A final verifier agent audits the report for obvious inconsistencies or missing sourcing.
+The system uses a series of specialized AI agents, orchestrated by a manager, to handle a user's request for financial analysis:
 
-You can run the example with:
+1.  **User Input**: The user enters a company name or ticker symbol through the Streamlit web app.
+2.  **Planning**: A `planner_agent` analyzes the request and generates relevant search terms for web searches.
+3.  **Financial Data Retrieval**: A `financial_data_agent` uses a custom tool (`financial_data_search`) built on the [Financial Datasets API](https://docs.financialdatasets.ai/introduction) to fetch detailed, structured financial data (historical statements, metrics, news, ownership, trades, etc.). This data is formatted into Markdown tables and lists.
+4.  **Web Search**: A `search_agent` uses the built-in `WebSearchTool` to gather broader context, news, and analyst views based on the planned search terms.
+5.  **Report Synthesis**: A `writer_agent` receives the detailed financial data and the web search summaries. It synthesizes this information into a comprehensive, detailed Markdown report, incorporating specific figures and details verbatim as instructed by its prompt. It also generates an executive summary and follow-up questions. The `writer_agent` can optionally use tools representing `financials_agent` and `risk_agent` for deeper dives if needed (though the focus is on using the directly provided detailed data).
+6.  **Verification**: A `verifier_agent` reviews the generated Markdown report for inconsistencies or potential issues.
+7.  **Display**: The Streamlit app (`streamlit_app.py`) displays the final report, executive summary, follow-up questions, and verification results. It also provides a button to download the full report as a Markdown file.
 
-```bash
-python -m examples.financial_research_agent.main
+## Features
+
+*   Multi-agent workflow for specialized tasks.
+*   Integration with Financial Datasets API for detailed, structured financial data.
+*   Web search integration for market context and news.
+*   Streamlit web interface for user interaction.
+*   Generation of detailed Markdown reports.
+*   Report download functionality.
+
+## Setup
+
+1.  **Clone the Repository:**
+    ```bash
+    git clone <your-repository-url>
+    cd <repository-directory>
+    ```
+2.  **Create a Virtual Environment (Recommended):**
+    ```bash
+    python -m venv .venv
+    source .venv/bin/activate  # On Windows use `.venv\Scripts\activate`
+    ```
+3.  **Install Dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+4.  **Set Up API Keys:**
+    *   Copy the `.env.template` file to a new file named `.env`:
+        ```bash
+        cp .env.template .env
+        ```
+    *   Obtain an API key from [Financial Datasets](https://financialdatasets.ai) and add it to the `.env` file:
+        ```
+        FINANCIAL_DATASETS_API_KEY=your_financial_datasets_key_here
+        ```
+    *   Obtain an API key from [OpenAI](https://platform.openai.com/api-keys) and add it to the `.env` file (or ensure `OPENAI_API_KEY` is set as an environment variable):
+        ```
+        OPENAI_API_KEY=your_openai_key_here
+        # You might also need OPENAI_ORG_ID depending on your setup
+        ```
+
+## Running the Application
+
+1.  Ensure your virtual environment is activated.
+2.  Run the Streamlit app from the project's root directory:
+    ```bash
+    streamlit run streamlit_app.py
+    ```
+3.  The application will open in your web browser. Enter a company name or ticker symbol and click "Analyze".
+
+## Project Structure
+
 ```
-
-and enter a query like:
-
+.
+├── financial_agents/ # Contains definitions for individual agents and tools
+│   ├── __init__.py
+│   ├── financial_data_agent.py
+│   ├── financial_data_tool.py
+│   ├── financials_agent.py
+│   ├── planner_agent.py
+│   ├── risk_agent.py
+│   ├── search_agent.py
+│   ├── verifier_agent.py
+│   └── writer_agent.py
+├── .env            # API keys (Create from .env.template)
+├── .env.template   # Template for API keys
+├── .gitignore
+├── manager.py      # Orchestrates the agent workflow
+├── README.md       # This file
+├── requirements.txt # Python dependencies
+└── streamlit_app.py # Main Streamlit application file
 ```
-Write up an analysis of Apple Inc.'s most recent quarter.
-```
-
-### Starter prompt
-
-The writer agent is seeded with instructions similar to:
-
-```
-You are a senior financial analyst. You will be provided with the original query,
-a set of raw search summaries, and detailed financial data about the company.
-Your task is to synthesize these into a long‑form markdown report (at least several paragraphs)
-with a short executive summary. You also have access to tools like `fundamentals_analysis` and
-`risk_analysis` to get short specialist write‑ups if you want to incorporate them.
-The financial data provided contains valuable information about the company's financial performance
-and metrics that should be prominently incorporated into your analysis.
-Add a few follow‑up questions for further research.
-```
-
-### Financial Datasets API
-
-The system now leverages the [Financial Datasets API](https://docs.financialdatasets.ai/introduction) to retrieve comprehensive financial information about companies, including:
-
-- Income statements
-- Balance sheets
-- Cash flow statements
-- Financial metrics
-- Stock prices
-- Company information
-
-To use this functionality, you'll need to:
-
-1. Sign up for an API key at [financialdatasets.ai](https://financialdatasets.ai)
-2. Add your API key to the `.env` file as `FINANCIAL_DATASETS_API_KEY=your_key_here`
-
-You can tweak these prompts and sub‑agents to suit your own data sources and preferred report structure.
