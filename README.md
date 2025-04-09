@@ -27,8 +27,8 @@ The system uses a series of specialized AI agents, orchestrated by a manager, to
 
 1.  **Clone the Repository:**
     ```bash
-    git clone <your-repository-url>
-    cd <repository-directory>
+    git clone https://github.com/himmannshu/stock-market-agents.git
+    cd stock-market-agents
     ```
 2.  **Create a Virtual Environment (Recommended):**
     ```bash
