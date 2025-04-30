@@ -48,6 +48,8 @@ class FinancialResearchManager:
             self.printer.update_item("start", "Starting financial research...", is_done=True)
             
             # Extract company/ticker from query for financial data retrieval
+            # TODO: _extract_company_info function is currently not doing anything. 
+            #       It should be used to extract the company/ticker from the query.
             company_info = await self._extract_company_info(query)
             
             # Get financial data using the new agent
@@ -98,9 +100,11 @@ class FinancialResearchManager:
         self.printer.update_item("financial_data", "Retrieving and analyzing financial data...")
         
         try:
+            print(f"[DEBUG - _get_financial_data] Company/Ticker: {company_info}")
             result = await Runner.run(financial_data_agent, f"Company/Ticker: {company_info}")
+            print(f"[DEBUG - _get_financial_data] Result: {result}")
             financial_data = result.final_output_as(FinancialDataAnalysis)
-            
+            print(f"[DEBUG - _get_financial_data] Financial Data: {financial_data}")
             self.printer.update_item(
                 "financial_data",
                 f"Retrieved financial data for {financial_data.company_name} ({financial_data.ticker})",
@@ -183,44 +187,48 @@ class FinancialResearchManager:
         writer_with_tools = writer_agent.clone(tools=[fundamentals_tool, risk_tool])
         self.printer.update_item("writing", "Synthesizing report...")
 
-        # Construct detailed financial data context using Markdown headings
-        detailed_financial_data_context = f"### Detailed Financial Data for {financial_data.company_name} ({financial_data.ticker})\n\n"
-        detailed_financial_data_context += f"#### Financial Overview & Key Figures\n{financial_data.financial_summary}\n\n" # financial_summary now contains structured details
-        detailed_financial_data_context += f"#### Historical Key Metrics\n{financial_data.key_metrics}\n\n" # key_metrics is now a detailed string (table/list)
-        detailed_financial_data_context += f"#### Revenue Segment Details\n{financial_data.revenue_segment_analysis}\n\n"
-        detailed_financial_data_context += f"#### Recent News\n{financial_data.news_summary}\n\n"
-        detailed_financial_data_context += f"#### Insider Trading Activity\n{financial_data.insider_trades_summary}\n\n"
-        if financial_data.institutional_ownership_summary:
-            detailed_financial_data_context += f"#### Institutional Ownership\n{financial_data.institutional_ownership_summary}\n\n"
-        detailed_financial_data_context += f"#### Noted Growth Analysis\n{financial_data.growth_analysis}\n\n"
+        # Construct detailed financial data context using the _markdown fields
+        detailed_financial_data_context = f"### Financial Data Context for {financial_data.company_name} ({financial_data.ticker})\n\n"
+        detailed_financial_data_context += f"#### Overall Summary\n{financial_data.financial_summary}\n\n" # Keep the textual summary
+        detailed_financial_data_context += f"#### Growth Analysis Summary\n{financial_data.growth_analysis}\n\n" # Keep the textual growth summary
+        
+        # Add raw markdown sections if they exist
+        if financial_data.company_info_markdown:
+             detailed_financial_data_context += f"{financial_data.company_info_markdown}\n"
+        if financial_data.key_metrics_markdown:
+            detailed_financial_data_context += f"{financial_data.key_metrics_markdown}\n"
+        if financial_data.segmented_revenues_markdown:
+            detailed_financial_data_context += f"{financial_data.segmented_revenues_markdown}\n"
+        if financial_data.income_statements_markdown:
+             detailed_financial_data_context += f"{financial_data.income_statements_markdown}\n"
+        if financial_data.balance_sheets_markdown:
+             detailed_financial_data_context += f"{financial_data.balance_sheets_markdown}\n"
+        if financial_data.cash_flows_markdown:
+             detailed_financial_data_context += f"{financial_data.cash_flows_markdown}\n"
+        if financial_data.news_markdown:
+            detailed_financial_data_context += f"{financial_data.news_markdown}\n"
+        if financial_data.institutional_ownership_markdown:
+            detailed_financial_data_context += f"{financial_data.institutional_ownership_markdown}\n"
+        if financial_data.insider_trades_markdown:
+            detailed_financial_data_context += f"{financial_data.insider_trades_markdown}\n"
+        if financial_data.stock_prices_markdown:
+             detailed_financial_data_context += f"{financial_data.stock_prices_markdown}\n"
+        if financial_data.press_releases_markdown:
+             detailed_financial_data_context += f"{financial_data.press_releases_markdown}\n"
         if financial_data.risk_factors:
-            # Format risk factors as a list if they are provided as a list
-            risk_list = "\n".join([f"- {risk}" for risk in financial_data.risk_factors])
-            detailed_financial_data_context += f"#### Mentioned Risk Factors\n{risk_list}\n\n"
-        else:
-            detailed_financial_data_context += f"#### Mentioned Risk Factors\nNone mentioned in the provided data.\n\n"
+            detailed_financial_data_context += f"#### Mentioned Risk Factors\n{financial_data.risk_factors}\n\n"
 
-        # Input for the writer agent now only contains textual context
+        # Combine search results into a single string
+        search_context = "\n\n".join(search_results)
+
         input_data = (
-            f"Original query: {query}\n"
-            f"Summarized web search results: {search_results}\n"
-            f"Detailed Financial Data Context: \n{detailed_financial_data_context}"
+            f"Original Query: {query}\n\n"
+            f"### Web Search Summaries\n\n{search_context}\n\n"
+            f"{detailed_financial_data_context}"
         )
 
-        result = Runner.run_streamed(writer_with_tools, input_data)
-        update_messages = [
-            "Planning report structure...",
-            "Writing sections...",
-            "Finalizing report...",
-        ]
-        last_update = time.time()
-        next_message = 0
-        async for _ in result.stream_events():
-            if time.time() - last_update > 5 and next_message < len(update_messages):
-                self.printer.update_item("writing", update_messages[next_message])
-                next_message += 1
-                last_update = time.time()
-        self.printer.mark_item_done("writing")
+        result = await Runner.run(writer_with_tools, input_data)
+        self.printer.update_item("writing", "Report generated", is_done=True)
         return result.final_output_as(FinancialReportData)
 
     async def _verify_report(self, report: FinancialReportData) -> VerificationResult:
