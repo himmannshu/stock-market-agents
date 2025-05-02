@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 from collections.abc import Sequence
 from typing import Any, Dict
@@ -47,14 +48,9 @@ class FinancialResearchManager:
             )
             self.printer.update_item("start", "Starting financial research...", is_done=True)
             
-            # Extract company/ticker from query for financial data retrieval
-            # TODO: _extract_company_info function is currently not doing anything. 
-            #       It should be used to extract the company/ticker from the query.
-            company_info = await self._extract_company_info(query)
-            
             # Get financial data using the new agent
-            financial_data = await self._get_financial_data(company_info)
-            
+            financial_data = await self._get_financial_data(query)
+            # print the financial data to the console
             search_plan = await self._plan_searches(query)
             search_results = await self._perform_searches(search_plan)
             
@@ -79,21 +75,6 @@ class FinancialResearchManager:
                 "trace_id": trace_id, # Include trace_id for debugging
             }
 
-    async def _extract_company_info(self, query: str) -> str:
-        """Extract company name or ticker from the query."""
-        self.printer.update_item("extracting_company", "Identifying company/ticker from query...")
-        
-        # Use a simple approach to extract potential company or ticker from the query
-        words = query.split()
-        company_info = query
-        
-        self.printer.update_item(
-            "extracting_company", 
-            f"Identified company/ticker from query", 
-            is_done=True
-        )
-        
-        return company_info
 
     async def _get_financial_data(self, company_info: str) -> FinancialDataAnalysis:
         """Retrieve financial data using the financial data agent."""
@@ -101,35 +82,45 @@ class FinancialResearchManager:
         
         try:
             print(f"[DEBUG - _get_financial_data] Company/Ticker: {company_info}")
+
             result = await Runner.run(financial_data_agent, f"Company/Ticker: {company_info}")
             print(f"[DEBUG - _get_financial_data] Result: {result}")
+            
             financial_data = result.final_output_as(FinancialDataAnalysis)
             print(f"[DEBUG - _get_financial_data] Financial Data: {financial_data}")
+
+
             self.printer.update_item(
                 "financial_data",
                 f"Retrieved financial data for {financial_data.company_name} ({financial_data.ticker})",
                 is_done=True,
             )
-            
             return financial_data
         except Exception as e:
             self.printer.update_item(
                 "financial_data",
                 f"Error retrieving financial data: {str(e)}",
                 is_done=True,
-                is_error=True,
             )
             # Return an empty financial data object if retrieval fails
             # Ensure all required fields have default values
             return FinancialDataAnalysis(
-                ticker="",
-                company_name="",
+                ticker="N/A",
+                company_name="N/A",
                 financial_summary="Failed to retrieve financial data.",
-                news_summary="",
-                insider_trades_summary="",
-                key_metrics=[],
-                growth_analysis="",
-                revenue_segment_analysis="",
+                company_info_markdown="Data not available.",
+                news_markdown="Data not available.",
+                institutional_ownership_markdown="Data not available.",
+                key_metrics_markdown="Data not available.",
+                segmented_revenues_markdown="Data not available.",
+                income_statements_markdown="Data not available.",
+                balance_sheets_markdown="Data not available.",
+                cash_flows_markdown="Data not available.",
+                insider_trades_markdown="Data not available.",
+                stock_prices_markdown="Data not available.",
+                press_releases_markdown="Data not available.",
+                growth_analysis="Data not available.",
+                risk_factors="Data not available."
             )
 
     async def _plan_searches(self, query: str) -> FinancialSearchPlan:
@@ -184,42 +175,41 @@ class FinancialResearchManager:
             tool_description="Use to get a short write‑up of potential red flags",
             custom_output_extractor=_summary_extractor,
         )
-        writer_with_tools = writer_agent.clone(tools=[fundamentals_tool, risk_tool])
+
+        analyst_tool = financial_data_agent.as_tool(
+            tool_name="financial_data_analysis",
+            tool_description="Use to get a detailed analysis of financial data",
+        )
+
+        writer_with_tools = writer_agent.clone(tools=[fundamentals_tool, risk_tool, analyst_tool])
         self.printer.update_item("writing", "Synthesizing report...")
+
+        # Helper to insert explicit missing data messages
+        def section_or_na(section, label):
+            return section if section and section.strip() else f"**{label}: Data not available.**\n"
 
         # Construct detailed financial data context using the _markdown fields
         detailed_financial_data_context = f"### Financial Data Context for {financial_data.company_name} ({financial_data.ticker})\n\n"
-        detailed_financial_data_context += f"#### Overall Summary\n{financial_data.financial_summary}\n\n" # Keep the textual summary
-        detailed_financial_data_context += f"#### Growth Analysis Summary\n{financial_data.growth_analysis}\n\n" # Keep the textual growth summary
-        
-        # Add raw markdown sections if they exist
-        if financial_data.company_info_markdown:
-             detailed_financial_data_context += f"{financial_data.company_info_markdown}\n"
-        if financial_data.key_metrics_markdown:
-            detailed_financial_data_context += f"{financial_data.key_metrics_markdown}\n"
-        if financial_data.segmented_revenues_markdown:
-            detailed_financial_data_context += f"{financial_data.segmented_revenues_markdown}\n"
-        if financial_data.income_statements_markdown:
-             detailed_financial_data_context += f"{financial_data.income_statements_markdown}\n"
-        if financial_data.balance_sheets_markdown:
-             detailed_financial_data_context += f"{financial_data.balance_sheets_markdown}\n"
-        if financial_data.cash_flows_markdown:
-             detailed_financial_data_context += f"{financial_data.cash_flows_markdown}\n"
-        if financial_data.news_markdown:
-            detailed_financial_data_context += f"{financial_data.news_markdown}\n"
-        if financial_data.institutional_ownership_markdown:
-            detailed_financial_data_context += f"{financial_data.institutional_ownership_markdown}\n"
-        if financial_data.insider_trades_markdown:
-            detailed_financial_data_context += f"{financial_data.insider_trades_markdown}\n"
-        if financial_data.stock_prices_markdown:
-             detailed_financial_data_context += f"{financial_data.stock_prices_markdown}\n"
-        if financial_data.press_releases_markdown:
-             detailed_financial_data_context += f"{financial_data.press_releases_markdown}\n"
+        detailed_financial_data_context += f"#### Overall Summary\n{section_or_na(financial_data.financial_summary, 'Overall Summary')}\n\n"
+        detailed_financial_data_context += f"#### Growth Analysis Summary\n{section_or_na(financial_data.growth_analysis, 'Growth Analysis Summary')}\n\n"
+        detailed_financial_data_context += section_or_na(financial_data.company_info_markdown, 'Company Info') + "\n"
+        detailed_financial_data_context += section_or_na(financial_data.key_metrics_markdown, 'Key Metrics') + "\n"
+        detailed_financial_data_context += section_or_na(financial_data.segmented_revenues_markdown, 'Segmented Revenues') + "\n"
+        detailed_financial_data_context += section_or_na(financial_data.income_statements_markdown, 'Income Statements') + "\n"
+        detailed_financial_data_context += section_or_na(financial_data.balance_sheets_markdown, 'Balance Sheets') + "\n"
+        detailed_financial_data_context += section_or_na(financial_data.cash_flows_markdown, 'Cash Flow Statements') + "\n"
+        detailed_financial_data_context += section_or_na(financial_data.news_markdown, 'Recent News') + "\n"
+        detailed_financial_data_context += section_or_na(financial_data.institutional_ownership_markdown, 'Top Institutional Holders') + "\n"
+        detailed_financial_data_context += section_or_na(financial_data.insider_trades_markdown, 'Recent Insider Trades') + "\n"
+        detailed_financial_data_context += section_or_na(financial_data.stock_prices_markdown, 'Recent Stock Prices') + "\n"
+        detailed_financial_data_context += section_or_na(financial_data.press_releases_markdown, 'Latest Earnings Press Release') + "\n"
         if financial_data.risk_factors:
-            detailed_financial_data_context += f"#### Mentioned Risk Factors\n{financial_data.risk_factors}\n\n"
+            detailed_financial_data_context += f"#### Mentioned Risk Factors\n{section_or_na(financial_data.risk_factors, 'Risk Factors')}\n\n"
+        else:
+            detailed_financial_data_context += f"#### Mentioned Risk Factors\n**Risk Factors: Data not available.**\n\n"
 
         # Combine search results into a single string
-        search_context = "\n\n".join(search_results)
+        search_context = "\n\n".join(search_results) if search_results else "**Web search results: Data not available.**"
 
         input_data = (
             f"Original Query: {query}\n\n"
