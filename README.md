@@ -85,3 +85,31 @@ The system uses a series of specialized AI agents, orchestrated by a manager, to
 ├── requirements.txt # Python dependencies
 └── streamlit_app.py # Main Streamlit application file
 ```
+
+## Agentic Workflow Diagram
+
+> The following diagram is rendered using [Mermaid](https://mermaid-js.github.io/mermaid/). It is visible on GitHub.com.
+
+```mermaid
+flowchart TD
+    A["User Input via Streamlit"] --> B["FinancialResearchManager run()"]
+    B --> C["Extract Company/Ticker"]
+    C --> D["Get Financial Data (financial_data_agent)"]
+    D --> E["Plan Searches (planner_agent)"]
+    E --> F["Perform Web Searches (search_agent for each search term)"]
+    F --> G["Write Report (writer_agent)"]
+    G --> H["Verify Report (verifier_agent)"]
+    H --> I["Display Results in Streamlit"]
+    G --> J["Follow-up Questions"]
+    G --> K["Short Summary"]
+    I --> L["Download Markdown Report"]
+    I --> M["Show Verification Result"]
+    I --> N["Show Follow-up Questions"]
+
+    subgraph "Specialist Tools (used by writer_agent)"
+        O["financials_agent (fundamentals_analysis)"]
+        P["risk_agent (risk_analysis)"]
+    end
+    G -- "May call" --> O
+    G -- "May call" --> P
+```
