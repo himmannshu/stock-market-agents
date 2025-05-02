@@ -88,7 +88,7 @@ The system uses a series of specialized AI agents, orchestrated by a manager, to
 
 ## Agentic Workflow Diagram
 
-> The following diagram is rendered using [Mermaid](https://mermaid-js.github.io/mermaid/). It is visible on GitHub.com.
+> The following diagram is rendered using [Mermaid](https://mermaid-js.github.io/mermaid/).
 
 ```mermaid
 flowchart TD
